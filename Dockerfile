@@ -10,11 +10,10 @@ RUN apt-get update && apt-get install -y \
     unixodbc-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Instalar ODBC Driver 18 para SQL Server (método moderno, sin apt-key deprecado)
+# Instalar ODBC Driver 18 para SQL Server
 RUN curl -sSL https://packages.microsoft.com/keys/microsoft.asc \
-    | gpg --dearmor > /usr/share/keyrings/microsoft-prod.gpg \
-    && curl -sSL https://packages.microsoft.com/config/debian/12/prod.list \
-    | sed 's|signed-by=.*|signed-by=/usr/share/keyrings/microsoft-prod.gpg|' \
+    | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
+    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" \
     > /etc/apt/sources.list.d/mssql-release.list \
     && apt-get update \
     && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
