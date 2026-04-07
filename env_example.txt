@@ -1,0 +1,18 @@
+# ============================================================
+# Human Point ATS - Variables de entorno SQL Server
+# Renombrar a .env en la carpeta backend/
+# ============================================================
+
+# SQL Server connection
+SQL_SERVER=sedb01.eastus.cloudapp.azure.com,1436
+SQL_DATABASE=HumanPointATS
+SQL_USERNAME=tu_usuario_aqui
+SQL_PASSWORD=tu_password_aqui
+SQL_DRIVER=ODBC Driver 17 for SQL Server
+
+# App
+JWT_SECRET=humanpoint-ats-secret-key-2024-change-in-production
+CORS_ORIGINS=*
+
+# Uploads
+UPLOAD_DIR=./uploads
