@@ -2404,3 +2404,5 @@ async def shutdown():
 # fix: vacancy_title en get_candidate - Wed Apr  8 22:07:12 UTC 2026
 
 # deploy 04/08/2026 17:17:24
+
+# redeploy-20260408-173405
