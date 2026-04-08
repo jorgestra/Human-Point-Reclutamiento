@@ -22,7 +22,7 @@ import {
   X
 } from 'lucide-react';
 
-const LOGO_URL = "https://customer-assets.emergentagent.com/job_recruit-pro-37/artifacts/nwd198i2_Logo%20HUMAN%20POINT.png";
+const LOGO_URL = null; // Logo gestionado inline
 
 // Public Job Board
 export const JobBoard = () => {
@@ -51,7 +51,7 @@ export const JobBoard = () => {
       {/* Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-          <img src={LOGO_URL} alt="Human Point" className="h-10" />
+          <div className="flex items-center gap-2"><div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{background:"linear-gradient(135deg,#004aad,#38b6ff)"}}><span className="text-white font-bold text-sm">HP</span></div><span className="text-white font-bold text-lg">Human Point</span></div>
           <Button variant="outline" onClick={() => navigate('/login')}>
             Portal de Reclutadores
           </Button>
@@ -128,7 +128,7 @@ export const JobBoard = () => {
       {/* Footer */}
       <footer className="bg-slate-900 text-slate-400 py-8">
         <div className="max-w-5xl mx-auto px-4 text-center">
-          <img src={LOGO_URL} alt="Human Point" className="h-8 mx-auto mb-4" />
+          <div className="flex flex-col items-center mb-2"><div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{background:"linear-gradient(135deg,#004aad,#38b6ff)"}}><span className="text-white font-bold">HP</span></div><span className="font-bold text-slate-900 mt-1">Human Point</span></div>
           <p className="text-sm">© 2024 Human Point. Todos los derechos reservados.</p>
         </div>
       </footer>
@@ -268,7 +268,7 @@ export const JobDetail = () => {
       {/* Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-          <img src={LOGO_URL} alt="Human Point" className="h-10" />
+          <div className="flex items-center gap-2"><div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{background:"linear-gradient(135deg,#004aad,#38b6ff)"}}><span className="text-white font-bold text-sm">HP</span></div><span className="text-white font-bold text-lg">Human Point</span></div>
           <Button variant="ghost" onClick={() => navigate('/jobs')}>
             <ArrowLeft className="mr-2" size={16} />
             Volver a Vacantes

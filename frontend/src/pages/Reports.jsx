@@ -20,8 +20,6 @@ import {
   PieChart,
   Pie,
   Cell,
-  LineChart,
-  Line,
   Legend
 } from 'recharts';
 
@@ -29,6 +27,7 @@ const COLORS = ['#0ea5e9', '#06b6d4', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'
 
 export const Reports = () => {
   const [metrics, setMetrics] = useState(null);
+  const [timeToHire, setTimeToHire] = useState(null);
   const [loading, setLoading] = useState(true);
   const [companies, setCompanies] = useState([]);
   const [filterEmpresa, setFilterEmpresa] = useState('all');
@@ -45,8 +44,12 @@ export const Reports = () => {
   const loadMetrics = async () => {
     try {
       const params = filterEmpresa !== 'all' ? `?empresa_id=${filterEmpresa}` : '';
-      const data = await apiRequest(`/reports/hiring-metrics${params}`);
-      setMetrics(data);
+      const [metricsData, timeData] = await Promise.all([
+        apiRequest(`/reports/hiring-metrics${params}`),
+        apiRequest(`/metrics/time-to-hire${params}`)
+      ]);
+      setMetrics(metricsData);
+      setTimeToHire(timeData);
     } catch (error) {
       console.error('Error loading metrics:', error);
     } finally {
@@ -71,15 +74,16 @@ export const Reports = () => {
     );
   }
 
-  const conversionData = metrics?.conversion_rates?.map(item => ({
+  // ✅ Backend devuelve pipeline_stages (no conversion_rates)
+  const pipelineData = (metrics?.pipeline_stages || []).map(item => ({
     stage: PIPELINE_STAGES[item.stage]?.label || item.stage,
-    candidatos: item.count,
-    tasa: item.rate
-  })) || [];
+    candidatos: item.count
+  }));
 
+  // ✅ Backend devuelve open_vacancies y closed_vacancies (no vacancies.open/closed)
   const vacancyData = [
-    { name: 'Abiertas', value: metrics?.vacancies?.open || 0, color: '#10b981' },
-    { name: 'Cerradas', value: metrics?.vacancies?.closed || 0, color: '#94a3b8' }
+    { name: 'Abiertas', value: metrics?.open_vacancies || 0, color: '#10b981' },
+    { name: 'Cerradas', value: metrics?.closed_vacancies || 0, color: '#94a3b8' }
   ];
 
   return (
@@ -109,9 +113,9 @@ export const Reports = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-500">Tiempo Promedio de Contratación</p>
+                <p className="text-sm text-slate-500">Time to Hire Promedio</p>
                 <p className="text-3xl font-bold text-slate-900 mt-1">
-                  {metrics?.avg_time_to_hire_days || 0}
+                  {timeToHire?.avg_time_to_hire_days || 0}
                 </p>
                 <p className="text-xs text-slate-400 mt-1">días</p>
               </div>
@@ -126,11 +130,11 @@ export const Reports = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-500">Total Contrataciones</p>
+                <p className="text-sm text-slate-500">Total Aplicaciones</p>
                 <p className="text-3xl font-bold text-slate-900 mt-1">
-                  {metrics?.total_hires || 0}
+                  {metrics?.total_applications || 0}
                 </p>
-                <p className="text-xs text-slate-400 mt-1">empleados</p>
+                <p className="text-xs text-slate-400 mt-1">candidatos</p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-emerald-50 flex items-center justify-center">
                 <Users className="text-emerald-600" size={24} />
@@ -145,7 +149,7 @@ export const Reports = () => {
               <div>
                 <p className="text-sm text-slate-500">Vacantes Abiertas</p>
                 <p className="text-3xl font-bold text-slate-900 mt-1">
-                  {metrics?.vacancies?.open || 0}
+                  {metrics?.open_vacancies || 0}
                 </p>
                 <p className="text-xs text-slate-400 mt-1">posiciones</p>
               </div>
@@ -162,7 +166,7 @@ export const Reports = () => {
               <div>
                 <p className="text-sm text-slate-500">Vacantes Cerradas</p>
                 <p className="text-3xl font-bold text-slate-900 mt-1">
-                  {metrics?.vacancies?.closed || 0}
+                  {metrics?.closed_vacancies || 0}
                 </p>
                 <p className="text-xs text-slate-400 mt-1">posiciones</p>
               </div>
@@ -176,35 +180,45 @@ export const Reports = () => {
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Conversion by Stage */}
+        {/* Pipeline by Stage */}
         <Card className="border-slate-200">
           <CardHeader>
             <CardTitle className="text-lg">Candidatos por Etapa</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={conversionData} margin={{ left: 60 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis 
-                    dataKey="stage" 
-                    tick={{ fontSize: 10 }}
-                    angle={-45}
-                    textAnchor="end"
-                    height={80}
-                  />
-                  <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'white', 
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '8px'
-                    }}
-                    formatter={(value, name) => [value, name === 'candidatos' ? 'Candidatos' : 'Tasa %']}
-                  />
-                  <Bar dataKey="candidatos" fill="#06b6d4" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              {pipelineData.some(d => d.candidatos > 0) ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={pipelineData} margin={{ left: 10, bottom: 60 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis
+                      dataKey="stage"
+                      tick={{ fontSize: 10 }}
+                      angle={-40}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '8px'
+                      }}
+                      formatter={(value) => [value, 'Candidatos']}
+                    />
+                    <Bar dataKey="candidatos" radius={[4, 4, 0, 0]}>
+                      {pipelineData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-slate-400">
+                  No hay candidatos en el pipeline
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -244,44 +258,36 @@ export const Reports = () => {
         </Card>
       </div>
 
-      {/* Conversion Rates Table */}
-      <Card className="border-slate-200">
-        <CardHeader>
-          <CardTitle className="text-lg">Tasas de Conversión por Etapa</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={conversionData} margin={{ left: 20, right: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis 
-                  dataKey="stage" 
-                  tick={{ fontSize: 10 }}
-                  angle={-45}
-                  textAnchor="end"
-                  height={80}
-                />
-                <YAxis tick={{ fontSize: 12 }} unit="%" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'white', 
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '8px'
-                  }}
-                  formatter={(value) => [`${value}%`, 'Tasa']}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="tasa" 
-                  stroke="#06b6d4" 
-                  strokeWidth={3}
-                  dot={{ fill: '#06b6d4', strokeWidth: 2, r: 5 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Time to Hire por empresa */}
+      {timeToHire?.by_empresa?.length > 0 && (
+        <Card className="border-slate-200">
+          <CardHeader>
+            <CardTitle className="text-lg">Time to Hire por Empresa</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200">
+                    <th className="text-left py-3 px-4 text-slate-500 font-medium">Empresa</th>
+                    <th className="text-right py-3 px-4 text-slate-500 font-medium">Promedio (días)</th>
+                    <th className="text-right py-3 px-4 text-slate-500 font-medium">Contrataciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {timeToHire.by_empresa.map((row, i) => (
+                    <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
+                      <td className="py-3 px-4 text-slate-700">{row.empresa_id || 'Sin empresa'}</td>
+                      <td className="py-3 px-4 text-right font-semibold text-slate-900">{row.avg_days}</td>
+                      <td className="py-3 px-4 text-right text-slate-600">{row.total_hires}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

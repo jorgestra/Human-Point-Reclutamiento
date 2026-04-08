@@ -77,6 +77,10 @@ export const Vacancies = () => {
     if (searchParams.get('requisition')) {
       loadRequisitionData(searchParams.get('requisition'));
       setShowForm(true);
+    } else if (searchParams.get('new') === 'true') {
+      setEditingVacancy(null);
+      setFormData(initialFormState);
+      setShowForm(true);
     }
   }, [searchParams]);
 
@@ -163,6 +167,7 @@ export const Vacancies = () => {
     setEditingVacancy(vacancy);
     setFormData({
       requisition_id: vacancy.requisition_id,
+      empresa_id: vacancy.empresa_id || '',
       title: vacancy.title,
       description: vacancy.description,
       requirements: vacancy.requirements,
@@ -171,6 +176,7 @@ export const Vacancies = () => {
       job_type: vacancy.job_type,
       salary_min: vacancy.salary_min,
       salary_max: vacancy.salary_max,
+      currency: vacancy.currency || 'GTQ',
       is_internal: vacancy.is_internal,
       is_external: vacancy.is_external,
       deadline: vacancy.deadline ? vacancy.deadline.split('T')[0] : ''

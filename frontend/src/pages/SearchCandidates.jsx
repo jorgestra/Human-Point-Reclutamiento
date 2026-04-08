@@ -98,7 +98,7 @@ export default function SearchCandidates() {
       params.append('page', page.toString());
       params.append('limit', limit.toString());
       params.append('sort_by', sortBy);
-      params.append('sort_order', sortOrder);
+      params.append('sort_dir', sortOrder.toUpperCase());
       
       // Add non-empty filters (skip __all__ placeholder)
       Object.entries(filters).forEach(([key, value]) => {
@@ -135,12 +135,12 @@ export default function SearchCandidates() {
     }
   };
 
-  // Re-search when sort changes
+  // Re-search when sort or page changes (only if already searched)
   useEffect(() => {
     if (results.length > 0 || total > 0) {
       searchCandidates();
     }
-  }, [sortBy, sortOrder, page]);
+  }, [sortBy, sortOrder, page, searchCandidates]);
 
   // Clear all filters
   const clearFilters = () => {

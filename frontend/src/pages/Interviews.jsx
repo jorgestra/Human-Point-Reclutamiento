@@ -215,7 +215,7 @@ export const Interviews = () => {
           location: formData.location,
           meeting_link: formData.meeting_link,
           notes: formData.notes,
-          evaluators: []
+          evaluators: formData.interviewer_id ? [formData.interviewer_id] : []
         })
       });
 
@@ -264,12 +264,17 @@ export const Interviews = () => {
   const handleEditInterview = (interview) => {
     setSelectedInterview(interview);
     const scheduledDate = new Date(interview.scheduled_at);
+    // evaluators viene como lista de objetos {evaluator_id, evaluator_name} o strings
+    const firstEvaluator = interview.evaluators?.[0];
+    const interviewerId = typeof firstEvaluator === 'object'
+      ? firstEvaluator?.evaluator_id
+      : firstEvaluator || '';
     setEditForm({
       scheduled_date: format(scheduledDate, 'yyyy-MM-dd'),
       scheduled_time: format(scheduledDate, 'HH:mm'),
       duration_minutes: interview.duration_minutes || 60,
       interview_type: interview.interview_type || 'hr',
-      interviewer_id: interview.interviewer_id || '',
+      interviewer_id: interviewerId,
       location: interview.location || '',
       meeting_link: interview.meeting_link || '',
       notes: interview.notes || '',
@@ -283,14 +288,14 @@ export const Interviews = () => {
     try {
       const scheduledAt = new Date(`${editForm.scheduled_date}T${editForm.scheduled_time}:00`);
       const payload = {
+        application_id: selectedInterview.application_id,
         scheduled_at: scheduledAt.toISOString(),
-        duration_minutes: editForm.duration_minutes,
+        duration_minutes: parseInt(editForm.duration_minutes),
         interview_type: editForm.interview_type,
-        interviewer_id: editForm.interviewer_id,
         location: editForm.location,
         meeting_link: editForm.meeting_link,
         notes: editForm.notes,
-        status: editForm.status
+        evaluators: editForm.interviewer_id ? [editForm.interviewer_id] : []
       };
       await apiRequest(`/interviews/${selectedInterview.id}`, {
         method: 'PUT',
@@ -865,7 +870,14 @@ export const Interviews = () => {
                 </div>
                 <div>
                   <p className="text-slate-500">Entrevistador</p>
-                  <p className="font-medium">{selectedInterview.interviewer_name || hrPersonnel.find(p => p.id === selectedInterview.interviewer_id)?.first_name || '-'}</p>
+                  <p className="font-medium">{
+                    (() => {
+                      const ev = selectedInterview.evaluators?.[0];
+                      if (!ev) return '-';
+                      if (typeof ev === 'object') return ev.evaluator_name || ev.evaluator_id || '-';
+                      return hrPersonnel.find(p => p.id === ev)?.first_name || ev || '-';
+                    })()
+                  }</p>
                 </div>
                 <div>
                   <p className="text-slate-500">Ubicación</p>

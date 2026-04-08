@@ -1065,6 +1065,7 @@ async def get_candidate(candidate_id: str, user: dict = Depends(get_current_user
         ad = serialize_doc(app)
         vac = await database.fetch_one("SELECT id, title, location FROM ATS_VACANTES WHERE id = ?", (app['vacancy_id'],))
         ad['vacancy'] = serialize_doc(vac) if vac else None
+        ad['vacancy_title'] = vac['title'] if vac else None
         d['applications'].append(ad)
     return d
 

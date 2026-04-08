@@ -58,9 +58,15 @@ export const Offers = () => {
   };
 
   const editFormInitialState = {
+    position_title: '',
     base_salary: '',
     currency: 'GTQ',
-    offer_date: '',
+    bonus: '',
+    benefits: '',
+    start_date: '',
+    expiration_date: '',
+    contract_type: 'indefinite',
+    additional_terms: '',
     status: '',
     notes: ''
   };
@@ -110,9 +116,15 @@ export const Offers = () => {
   const handleEditOffer = (offer) => {
     setEditingOffer(offer);
     setEditFormData({
+      position_title: offer.position_title || '',
       base_salary: offer.base_salary || '',
       currency: offer.currency || 'GTQ',
-      offer_date: offer.offer_date ? offer.offer_date.split('T')[0] : '',
+      bonus: offer.bonus || '',
+      benefits: offer.benefits || '',
+      start_date: offer.start_date ? offer.start_date.split('T')[0] : '',
+      expiration_date: offer.expiration_date ? offer.expiration_date.split('T')[0] : '',
+      contract_type: offer.contract_type || 'indefinite',
+      additional_terms: offer.additional_terms || '',
       status: offer.status || '',
       notes: offer.notes || ''
     });
@@ -123,11 +135,17 @@ export const Offers = () => {
     e.preventDefault();
     try {
       const payload = {
+        position_title: editFormData.position_title,
         base_salary: parseFloat(editFormData.base_salary),
         currency: editFormData.currency,
-        offer_date: editFormData.offer_date,
+        bonus: editFormData.bonus ? parseFloat(editFormData.bonus) : null,
+        benefits: editFormData.benefits || null,
+        start_date: editFormData.start_date ? new Date(editFormData.start_date).toISOString() : null,
+        expiration_date: editFormData.expiration_date ? new Date(editFormData.expiration_date).toISOString() : null,
+        contract_type: editFormData.contract_type,
+        additional_terms: editFormData.additional_terms || null,
         status: editFormData.status,
-        notes: editFormData.notes
+        notes: editFormData.notes || null
       };
       
       await apiRequest(`/offers/${editingOffer.id}`, {

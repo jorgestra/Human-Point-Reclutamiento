@@ -134,7 +134,6 @@ export const Hirings = () => {
         <Button 
           onClick={() => { setFormData(initialFormState); setShowForm(true); }}
           className="bg-slate-900 hover:bg-slate-800"
-          disabled={acceptedOffers.length === 0}
           data-testid="new-hiring-btn"
         >
           <Plus className="mr-2 h-4 w-4" />

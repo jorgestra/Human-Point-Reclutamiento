@@ -53,7 +53,8 @@ export const HRPersonnel = () => {
 
   const loadPersonnel = async () => {
     try {
-      const data = await apiRequest(`/hr-personnel?active_only=${showActiveOnly}`);
+      // Backend corregido usa include_inactive=true para mostrar todos
+      const data = await apiRequest(`/hr-personnel?include_inactive=${!showActiveOnly}`);
       setPersonnel(data || []);
     } catch (error) {
       console.error('Error loading HR personnel:', error);
