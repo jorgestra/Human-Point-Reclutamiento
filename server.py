@@ -1030,9 +1030,13 @@ async def advanced_search(
     base_sql = f"SELECT DISTINCT c.* FROM ATS_CANDIDATOS c{join_sql}"
     all_params = tuple(join_params + where_params)
 
-    total = await database.fetch_val(f"SELECT COUNT(DISTINCT c.id) FROM ATS_CANDIDATOS c{join_sql} {where}", all_params)
-    sql = database.paginate(f"{base_sql} {where} ORDER BY c.{col} {direction}", page, limit)
-    rows = await database.fetch_all(sql, all_params)
+    try:
+        total = await database.fetch_val(f"SELECT COUNT(DISTINCT c.id) FROM ATS_CANDIDATOS c{join_sql} {where}", all_params)
+        sql = database.paginate(f"{base_sql} {where} ORDER BY c.{col} {direction}", page, limit)
+        rows = await database.fetch_all(sql, all_params)
+    except Exception as e:
+        logger.error(f"advanced_search error: {e} | SQL: {base_sql} | params: {all_params}")
+        raise HTTPException(status_code=500, detail=f"Error en búsqueda: {str(e)}")
 
     result = []
     for r in rows:
@@ -2402,7 +2406,3 @@ async def shutdown():
     await database.close_pool()
 
 # fix: vacancy_title en get_candidate - Wed Apr  8 22:07:12 UTC 2026
-
-# deploy 04/08/2026 17:17:24
-
-# redeploy-20260408-173405
