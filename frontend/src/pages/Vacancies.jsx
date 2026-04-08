@@ -206,8 +206,29 @@ export const Vacancies = () => {
 
   const copyLink = (vacancyId) => {
     const url = `${window.location.origin}/jobs/${vacancyId}`;
-    navigator.clipboard.writeText(url);
-    toast.success('Enlace copiado');
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(url)
+        .then(() => toast.success('Enlace copiado al portapapeles'))
+        .catch(() => {
+          // Fallback manual
+          const el = document.createElement('textarea');
+          el.value = url;
+          document.body.appendChild(el);
+          el.select();
+          document.execCommand('copy');
+          document.body.removeChild(el);
+          toast.success('Enlace copiado al portapapeles');
+        });
+    } else {
+      // Fallback para HTTP o navegadores sin soporte
+      const el = document.createElement('textarea');
+      el.value = url;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      toast.success('Enlace copiado al portapapeles');
+    }
   };
 
   const filteredVacancies = vacancies.filter(v => 

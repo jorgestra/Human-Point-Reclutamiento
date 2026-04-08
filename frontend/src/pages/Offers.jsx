@@ -507,6 +507,15 @@ export const Offers = () => {
           </DialogHeader>
           <form onSubmit={handleUpdateOffer} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2 space-y-2">
+                <Label>Título del Puesto *</Label>
+                <Input
+                  required
+                  value={editFormData.position_title}
+                  onChange={(e) => setEditFormData({ ...editFormData, position_title: e.target.value })}
+                  data-testid="edit-offer-position-input"
+                />
+              </div>
               <div className="space-y-2">
                 <Label>Salario Base *</Label>
                 <Input
@@ -536,19 +545,51 @@ export const Offers = () => {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Fecha de Oferta</Label>
+                <Label>Bono</Label>
                 <Input
-                  type="date"
-                  value={editFormData.offer_date}
-                  onChange={(e) => setEditFormData({ ...editFormData, offer_date: e.target.value })}
-                  data-testid="edit-offer-date-input"
+                  type="number"
+                  step="0.01"
+                  value={editFormData.bonus}
+                  onChange={(e) => setEditFormData({ ...editFormData, bonus: e.target.value })}
+                  data-testid="edit-offer-bonus-input"
                 />
               </div>
               <div className="space-y-2">
+                <Label>Tipo de Contrato</Label>
+                <Select value={editFormData.contract_type} onValueChange={(v) => setEditFormData({ ...editFormData, contract_type: v })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="indefinite">Indefinido</SelectItem>
+                    <SelectItem value="fixed">Plazo Fijo</SelectItem>
+                    <SelectItem value="temporary">Temporal</SelectItem>
+                    <SelectItem value="contract">Por Proyecto</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Fecha de Inicio *</Label>
+                <Input
+                  type="date"
+                  required
+                  value={editFormData.start_date}
+                  onChange={(e) => setEditFormData({ ...editFormData, start_date: e.target.value })}
+                  data-testid="edit-offer-start-input"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Fecha de Expiración *</Label>
+                <Input
+                  type="date"
+                  required
+                  value={editFormData.expiration_date}
+                  onChange={(e) => setEditFormData({ ...editFormData, expiration_date: e.target.value })}
+                  data-testid="edit-offer-expiration-input"
+                />
+              </div>
+              <div className="col-span-2 space-y-2">
                 <Label>Estado</Label>
                 <Select value={editFormData.status} onValueChange={(v) => setEditFormData({ ...editFormData, status: v })}>
                   <SelectTrigger data-testid="edit-offer-status-select">
@@ -563,17 +604,36 @@ export const Offers = () => {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Notas</Label>
-              <Textarea
-                value={editFormData.notes}
-                onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
-                rows={3}
-                placeholder="Notas adicionales sobre la oferta..."
-                data-testid="edit-offer-notes-input"
-              />
+              <div className="col-span-2 space-y-2">
+                <Label>Beneficios</Label>
+                <Textarea
+                  value={editFormData.benefits}
+                  onChange={(e) => setEditFormData({ ...editFormData, benefits: e.target.value })}
+                  rows={2}
+                  placeholder="Beneficios incluidos en la oferta..."
+                  data-testid="edit-offer-benefits-input"
+                />
+              </div>
+              <div className="col-span-2 space-y-2">
+                <Label>Términos Adicionales</Label>
+                <Textarea
+                  value={editFormData.additional_terms}
+                  onChange={(e) => setEditFormData({ ...editFormData, additional_terms: e.target.value })}
+                  rows={2}
+                  placeholder="Términos adicionales..."
+                  data-testid="edit-offer-terms-input"
+                />
+              </div>
+              <div className="col-span-2 space-y-2">
+                <Label>Notas</Label>
+                <Textarea
+                  value={editFormData.notes}
+                  onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
+                  rows={2}
+                  placeholder="Notas adicionales sobre la oferta..."
+                  data-testid="edit-offer-notes-input"
+                />
+              </div>
             </div>
 
             <DialogFooter>

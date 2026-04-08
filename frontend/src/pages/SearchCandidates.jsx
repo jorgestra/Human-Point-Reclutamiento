@@ -99,14 +99,17 @@ export default function SearchCandidates() {
       params.append('limit', limit.toString());
       params.append('sort_by', sortBy);
       params.append('sort_dir', sortOrder.toUpperCase());
-      
-      // Add non-empty filters (skip __all__ placeholder)
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value && value.toString().trim() && value !== '__all__') {
-          params.append(key, value.toString().trim());
-        }
-      });
-      
+
+      // Mapeo correcto de filtros frontend → backend
+      if (filters.name && filters.name.trim()) params.append('q', filters.name.trim());
+      if (filters.candidate_status && filters.candidate_status !== '__all__') params.append('candidate_status', filters.candidate_status);
+      if (filters.experience_range && filters.experience_range !== '__all__') params.append('experience_range', filters.experience_range);
+      if (filters.professional_level_id && filters.professional_level_id !== '__all__') params.append('professional_level_id', filters.professional_level_id);
+      if (filters.professional_area_id && filters.professional_area_id !== '__all__') params.append('professional_area_ids', filters.professional_area_id);
+      if (filters.language_id && filters.language_id !== '__all__') params.append('language_ids', filters.language_id);
+      if (filters.min_salary && filters.min_salary.trim()) params.append('salary_min', filters.min_salary.trim());
+      if (filters.max_salary && filters.max_salary.trim()) params.append('salary_max', filters.max_salary.trim());
+
       const data = await apiRequest(`/candidates/search/advanced?${params.toString()}`);
       setResults(data.items || []);
       setTotal(data.total || 0);

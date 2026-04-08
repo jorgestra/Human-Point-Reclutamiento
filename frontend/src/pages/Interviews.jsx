@@ -191,7 +191,7 @@ export const Interviews = () => {
 
   const loadHRPersonnel = async () => {
     try {
-      const data = await apiRequest('/hr-personnel?active_only=true');
+      const data = await apiRequest('/hr-personnel');
       setHrPersonnel(data || []);
     } catch {
       console.error('Error loading HR personnel');
