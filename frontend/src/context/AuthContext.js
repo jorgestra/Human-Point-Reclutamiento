@@ -13,7 +13,6 @@ export const AuthProvider = ({ children }) => {
     
     if (storedUser && token) {
       setUserState(storedUser);
-      // Validate token
       fetch(`${API_URL}/auth/me`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
@@ -41,12 +40,13 @@ export const AuthProvider = ({ children }) => {
       body: JSON.stringify({ email, password })
     });
 
+    // Leer el body UNA sola vez
+    const data = await response.json();
+
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || 'Login failed');
+      throw new Error(data.detail || 'Login failed');
     }
 
-    const data = await response.json();
     setToken(data.access_token);
     setUser(data.user);
     setUserState(data.user);
@@ -60,12 +60,13 @@ export const AuthProvider = ({ children }) => {
       body: JSON.stringify(userData)
     });
 
+    // Leer el body UNA sola vez
+    const data = await response.json();
+
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || 'Registration failed');
+      throw new Error(data.detail || 'Registration failed');
     }
 
-    const data = await response.json();
     setToken(data.access_token);
     setUser(data.user);
     setUserState(data.user);
