@@ -6,6 +6,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
+import { Switch } from '../components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { toast } from 'sonner';
 import { Plus, Edit, Building2, Globe, Phone, MapPin, FileText, Search } from 'lucide-react';
@@ -250,6 +251,14 @@ export const Companies = () => {
               <div className="col-span-2 space-y-1.5">
                 <Label>Industria / Giro</Label>
                 <Input value={form.industry} onChange={e => setForm({ ...form, industry: e.target.value })} placeholder="Tecnología, Manufactura, Servicios..." data-testid="company-industry-input" />
+              </div>
+              <div className="col-span-2 flex items-center justify-between py-1">
+                <Label>Empresa Activa</Label>
+                <Switch
+                  checked={form.is_active}
+                  onCheckedChange={(v) => setForm({ ...form, is_active: v })}
+                  data-testid="company-active-switch"
+                />
               </div>
             </div>
             <DialogFooter>

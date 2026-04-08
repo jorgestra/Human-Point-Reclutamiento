@@ -93,8 +93,8 @@ export const HRPersonnel = () => {
   const handleEdit = (person) => {
     setEditingPerson(person);
     setFormData({
-      first_name: person.first_name,
-      last_name: person.last_name,
+      first_name: person.first_name || person.name || '',
+      last_name: person.last_name || '',
       email: person.email || '',
       position: person.position || '',
       department: person.department || '',
@@ -114,11 +114,14 @@ export const HRPersonnel = () => {
     }
   };
 
-  const filteredPersonnel = personnel.filter(p => 
-    `${p.first_name} ${p.last_name}`.toLowerCase().includes(search.toLowerCase()) ||
-    (p.email && p.email.toLowerCase().includes(search.toLowerCase())) ||
-    (p.department && p.department.toLowerCase().includes(search.toLowerCase()))
-  );
+  const filteredPersonnel = personnel.filter(p => {
+    const fullName = p.first_name && p.last_name
+      ? `${p.first_name} ${p.last_name}`
+      : p.name || '';
+    return fullName.toLowerCase().includes(search.toLowerCase()) ||
+      (p.email && p.email.toLowerCase().includes(search.toLowerCase())) ||
+      (p.department && p.department.toLowerCase().includes(search.toLowerCase()));
+  });
 
   return (
     <div className="space-y-6" data-testid="hr-personnel-page">
@@ -200,7 +203,11 @@ export const HRPersonnel = () => {
                           <UserCheck size={18} className="text-purple-600" />
                         </div>
                         <div>
-                          <p className="font-medium text-slate-900">{person.first_name} {person.last_name}</p>
+                          <p className="font-medium text-slate-900">
+                            {person.first_name && person.last_name
+                              ? `${person.first_name} ${person.last_name}`
+                              : person.name || 'Sin nombre'}
+                          </p>
                         </div>
                       </div>
                     </TableCell>
