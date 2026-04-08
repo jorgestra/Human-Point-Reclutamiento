@@ -797,7 +797,7 @@ export const Interviews = () => {
                 <SelectContent>
                   {hrPersonnel.map(p => (
                     <SelectItem key={p.id} value={p.id}>
-                      {p.first_name} {p.last_name} {p.position ? `— ${p.position}` : ''}
+                      {p.first_name && p.last_name ? `${p.first_name} ${p.last_name}` : p.name || p.first_name || p.last_name || 'Sin nombre'} {p.position ? `— ${p.position}` : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -875,7 +875,9 @@ export const Interviews = () => {
                       const ev = selectedInterview.evaluators?.[0];
                       if (!ev) return '-';
                       if (typeof ev === 'object') return ev.evaluator_name || ev.evaluator_id || '-';
-                      return hrPersonnel.find(p => p.id === ev)?.first_name || ev || '-';
+                      const p = hrPersonnel.find(p => p.id === ev);
+                      if (!p) return ev;
+                      return (p.first_name && p.last_name) ? `${p.first_name} ${p.last_name}` : p.name || p.first_name || '-';
                     })()
                   }</p>
                 </div>
@@ -968,7 +970,7 @@ export const Interviews = () => {
                   <SelectContent>
                     {hrPersonnel.map(p => (
                       <SelectItem key={p.id} value={p.id}>
-                        {p.first_name} {p.last_name}
+                        {p.first_name && p.last_name ? `${p.first_name} ${p.last_name}` : p.name || p.first_name || p.last_name || 'Sin nombre'}
                       </SelectItem>
                     ))}
                   </SelectContent>
