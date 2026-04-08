@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
-const LOGO_URL = "https://customer-assets.emergentagent.com/job_recruit-pro-37/artifacts/nwd198i2_Logo%20HUMAN%20POINT.png";
+const LOGO_URL = null; // Logo gestionado inline
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', roles: ['admin', 'recruiter', 'hiring_manager', 'viewer'] },
@@ -67,12 +67,15 @@ export const Sidebar = ({ collapsed, setCollapsed }) => {
         {/* Logo */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-slate-800">
           {!collapsed && (
-            <img 
-              src={LOGO_URL} 
-              alt="Human Point" 
-              className="h-8 object-contain"
-              data-testid="sidebar-logo"
-            />
+            <div className="flex items-center gap-2" data-testid="sidebar-logo">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #004aad, #38b6ff)' }}>
+                <span className="text-white font-bold text-sm">HP</span>
+              </div>
+              <div className="leading-tight">
+                <p className="text-white font-bold text-sm leading-none">Human Point</p>
+                <p className="text-slate-400 text-xs">Reclutamiento</p>
+              </div>
+            </div>
           )}
           <button
             onClick={() => setCollapsed(!collapsed)}

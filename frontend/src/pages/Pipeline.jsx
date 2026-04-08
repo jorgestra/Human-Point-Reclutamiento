@@ -118,7 +118,7 @@ export const Pipeline = () => {
 
     try {
       await apiRequest(`/applications/${moveDialog.app.id}/move`, {
-        method: 'POST',
+        method: 'PUT',
         body: JSON.stringify({ new_stage: moveDialog.newStage, notes: moveNotes })
       });
       toast.success(`Candidato movido a ${PIPELINE_STAGES[moveDialog.newStage]?.label}`);
