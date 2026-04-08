@@ -88,20 +88,29 @@ export const Dashboard = () => {
     );
   }
 
+  // ✅ Nombres correctos del backend (sin stats.stats, directo en stats)
   const statCards = [
-    { label: 'Requisiciones Abiertas', value: stats?.stats?.open_requisitions || 0, icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'Vacantes Publicadas', value: stats?.stats?.open_vacancies || 0, icon: Briefcase, color: 'text-cyan-600', bg: 'bg-cyan-50' },
-    { label: 'Candidatos Activos', value: stats?.stats?.active_applications || 0, icon: Users, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { label: 'Entrevistas Pendientes', value: stats?.stats?.pending_interviews || 0, icon: Calendar, color: 'text-orange-600', bg: 'bg-orange-50' },
-    { label: 'Ofertas Enviadas', value: stats?.stats?.pending_offers || 0, icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50' },
-    { label: 'Contrataciones', value: stats?.stats?.total_hires || 0, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
+    { label: 'Requisiciones Abiertas', value: stats?.open_requisitions || 0, icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { label: 'Vacantes Publicadas', value: stats?.open_vacancies || 0, icon: Briefcase, color: 'text-cyan-600', bg: 'bg-cyan-50' },
+    { label: 'Candidatos Totales', value: stats?.total_candidates || 0, icon: Users, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { label: 'Aplicaciones Activas', value: stats?.active_applications || 0, icon: Users, color: 'text-teal-600', bg: 'bg-teal-50' },
+    { label: 'Entrevistas Pendientes', value: stats?.pending_interviews || 0, icon: Calendar, color: 'text-orange-600', bg: 'bg-orange-50' },
+    { label: 'Ofertas Enviadas', value: stats?.pending_offers || 0, icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50' },
+    { label: 'Contrataciones', value: stats?.total_hires || 0, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
   ];
 
-  const pipelineData = stats?.pipeline_distribution?.map(item => ({
+  // ✅ Backend devuelve pipeline_stages (no pipeline_distribution)
+  const pipelineData = (stats?.pipeline_stages || []).map(item => ({
     stage: PIPELINE_STAGES[item.stage]?.label || item.stage,
     count: item.count,
     fill: PIPELINE_STAGES[item.stage]?.bgColor || '#e2e8f0'
-  })) || [];
+  }));
+
+  // ✅ Backend devuelve sources con _id (no source_breakdown con source)
+  const sourceData = (stats?.sources || []).map(item => ({
+    source: item._id || 'Otro',
+    count: item.count
+  }));
 
   return (
     <div className="space-y-6" data-testid="dashboard-page">
@@ -145,7 +154,7 @@ export const Dashboard = () => {
       </div>
 
       {/* Stats Grid with Time to Hire */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
         {statCards.map((stat, index) => (
           <Card key={index} className="hover-card border-slate-200" data-testid={`stat-card-${index}`}>
             <CardContent className="p-4">
@@ -184,26 +193,32 @@ export const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={pipelineData} layout="vertical" margin={{ left: 80 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis type="number" tick={{ fontSize: 12 }} />
-                  <YAxis dataKey="stage" type="category" tick={{ fontSize: 11 }} width={80} />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'white', 
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '8px',
-                      fontSize: '12px'
-                    }}
-                  />
-                  <Bar dataKey="count" radius={[0, 4, 4, 0]}>
-                    {pipelineData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              {pipelineData.some(d => d.count > 0) ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={pipelineData} layout="vertical" margin={{ left: 80 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis type="number" tick={{ fontSize: 12 }} />
+                    <YAxis dataKey="stage" type="category" tick={{ fontSize: 11 }} width={80} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '8px',
+                        fontSize: '12px'
+                      }}
+                    />
+                    <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+                      {pipelineData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-slate-400">
+                  No hay candidatos en el pipeline
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -215,11 +230,11 @@ export const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="h-64 flex items-center">
-              {stats?.source_breakdown?.length > 0 ? (
+              {sourceData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={stats.source_breakdown}
+                      data={sourceData}
                       cx="50%"
                       cy="50%"
                       innerRadius={50}
@@ -229,7 +244,7 @@ export const Dashboard = () => {
                       label={({ source, count }) => `${source}: ${count}`}
                       labelLine={false}
                     >
-                      {stats.source_breakdown.map((entry, index) => (
+                      {sourceData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
@@ -260,7 +275,7 @@ export const Dashboard = () => {
           {stats?.recent_applications?.length > 0 ? (
             <div className="space-y-3">
               {stats.recent_applications.map((app, index) => (
-                <div 
+                <div
                   key={index}
                   className="flex items-center justify-between p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors"
                   data-testid={`recent-app-${index}`}
