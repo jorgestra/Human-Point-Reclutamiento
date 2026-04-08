@@ -1032,7 +1032,7 @@ async def advanced_search(
 
     total = await database.fetch_val(f"SELECT COUNT(DISTINCT c.id) FROM ATS_CANDIDATOS c{join_sql} {where}", all_params)
     sql = database.paginate(f"{base_sql} {where} ORDER BY c.{col} {direction}", page, limit)
-    rows = await database.fetch_all(sql, tuple(params))
+    rows = await database.fetch_all(sql, all_params)
 
     result = []
     for r in rows:
