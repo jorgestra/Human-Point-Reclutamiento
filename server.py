@@ -2400,3 +2400,5 @@ async def startup():
 @app.on_event("shutdown")
 async def shutdown():
     await database.close_pool()
+
+# fix: vacancy_title en get_candidate - Wed Apr  8 22:07:12 UTC 2026

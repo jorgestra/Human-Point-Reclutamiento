@@ -1116,7 +1116,7 @@ export const CandidateDetail = () => {
                             <Briefcase size={18} className="text-slate-400" />
                             <div>
                               <p className="font-medium text-slate-900">
-                                {app.vacancy_title || `Vacante #${app.vacancy_id?.slice(0, 8)}`}
+                                {app.vacancy_title || app.vacancy?.title || `Vacante #${app.vacancy_id?.slice(0, 8)}`}
                               </p>
                               {app.vacancy_location && (
                                 <div className="flex items-center gap-1 text-xs text-slate-400 mt-0.5">
@@ -1869,7 +1869,7 @@ export const CandidateDetail = () => {
                 <SelectContent>
                   {candidate?.applications?.map(app => (
                     <SelectItem key={app.id} value={app.id}>
-                      {app.vacancy_title || `Vacante #${app.vacancy_id?.slice(0, 8)}`}
+                      {app.vacancy_title || app.vacancy?.title || `Vacante #${app.vacancy_id?.slice(0, 8)}`}
                     </SelectItem>
                   ))}
                 </SelectContent>
