@@ -1,0 +1,18 @@
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = "build"
+
+[build.environment]
+  CI = "false"
+  NODE_VERSION = "18"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
