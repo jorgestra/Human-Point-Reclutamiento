@@ -27,6 +27,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# Cache bust: 2026-04-08
 EXPOSE 8000
 
 CMD uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000}
