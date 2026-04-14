@@ -360,7 +360,7 @@ export default function Settings() {
               { key: 'name', label: 'Nombre' },
               { key: 'identifier', label: 'Identificador' },
               { key: 'industry', label: 'Industria' },
-              { key: 'active', label: 'Estado', render: (val) => (
+              { key: 'is_active', label: 'Estado', render: (val) => (
                 <Badge className={val ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-600'}>
                   {val ? 'Activa' : 'Inactiva'}
                 </Badge>
@@ -407,8 +407,8 @@ export default function Settings() {
                 <div className="flex items-center gap-2">
                   <input
                     type="checkbox"
-                    checked={formData.active !== false}
-                    onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+                    checked={formData.is_active !== false}
+                    onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
                     className="rounded"
                     id="company-active"
                   />
@@ -434,7 +434,7 @@ export default function Settings() {
               { key: 'email', label: 'Email' },
               { key: 'position', label: 'Cargo' },
               { key: 'department', label: 'Departamento' },
-              { key: 'active', label: 'Estado', render: (val) => (
+              { key: 'is_active', label: 'Estado', render: (val) => (
                 <Badge className={val ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-600'}>
                   {val ? 'Activo' : 'Inactivo'}
                 </Badge>
@@ -491,8 +491,8 @@ export default function Settings() {
                 <div className="flex items-center gap-2">
                   <input
                     type="checkbox"
-                    checked={formData.active !== false}
-                    onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+                    checked={formData.is_active !== false}
+                    onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
                     className="rounded"
                     id="hr-active"
                   />
