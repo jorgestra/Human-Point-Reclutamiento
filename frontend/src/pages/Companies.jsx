@@ -157,9 +157,9 @@ export const Companies = () => {
                       {c.short_name && <p className="text-xs text-slate-400">{c.short_name}</p>}
                     </div>
                   </div>
-                  <Badge className={c.is_active ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-500'}>
+                  <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${c.is_active ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
                     {c.is_active ? 'Activa' : 'Inactiva'}
-                  </Badge>
+                  </span>
                 </div>
 
                 <div className="space-y-1.5 text-sm">

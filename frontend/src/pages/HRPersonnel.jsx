@@ -93,8 +93,8 @@ export const HRPersonnel = () => {
   const handleEdit = (person) => {
     setEditingPerson(person);
     setFormData({
-      first_name: person.first_name || person.name || '',
-      last_name: person.last_name || '',
+      first_name: person.first_name,
+      last_name: person.last_name,
       email: person.email || '',
       position: person.position || '',
       department: person.department || '',
@@ -114,14 +114,11 @@ export const HRPersonnel = () => {
     }
   };
 
-  const filteredPersonnel = personnel.filter(p => {
-    const fullName = p.first_name && p.last_name
-      ? `${p.first_name} ${p.last_name}`
-      : p.name || '';
-    return fullName.toLowerCase().includes(search.toLowerCase()) ||
-      (p.email && p.email.toLowerCase().includes(search.toLowerCase())) ||
-      (p.department && p.department.toLowerCase().includes(search.toLowerCase()));
-  });
+  const filteredPersonnel = personnel.filter(p => 
+    `${p.first_name} ${p.last_name}`.toLowerCase().includes(search.toLowerCase()) ||
+    (p.email && p.email.toLowerCase().includes(search.toLowerCase())) ||
+    (p.department && p.department.toLowerCase().includes(search.toLowerCase()))
+  );
 
   return (
     <div className="space-y-6" data-testid="hr-personnel-page">
@@ -203,11 +200,7 @@ export const HRPersonnel = () => {
                           <UserCheck size={18} className="text-purple-600" />
                         </div>
                         <div>
-                          <p className="font-medium text-slate-900">
-                            {person.first_name && person.last_name
-                              ? `${person.first_name} ${person.last_name}`
-                              : person.name || 'Sin nombre'}
-                          </p>
+                          <p className="font-medium text-slate-900">{person.first_name} {person.last_name}</p>
                         </div>
                       </div>
                     </TableCell>
@@ -231,9 +224,9 @@ export const HRPersonnel = () => {
                       ) : '-'}
                     </TableCell>
                     <TableCell>
-                      <Badge className={person.is_active ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-500'}>
+                      <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${person.is_active ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
                         {person.is_active ? 'Activo' : 'Inactivo'}
-                      </Badge>
+                      </span>
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
@@ -341,5 +334,3 @@ export const HRPersonnel = () => {
     </div>
   );
 };
-
-
