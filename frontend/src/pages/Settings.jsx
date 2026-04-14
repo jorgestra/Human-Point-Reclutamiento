@@ -184,7 +184,7 @@ export default function Settings() {
   const loadHRPersonnel = async () => {
     try {
       setLoadingHR(true);
-      const data = await apiRequest('/hr-personnel');
+      const data = await apiRequest('/hr-personnel?include_inactive=true');
       setHrPersonnel(data || []);
     } catch (error) {
       console.error('Error loading HR personnel:', error);
