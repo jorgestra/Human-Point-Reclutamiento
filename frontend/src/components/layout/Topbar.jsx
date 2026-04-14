@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { Menu, Bell, Search, User } from 'lucide-react';
 import { Button } from '../ui/button';
 import {
@@ -15,12 +16,21 @@ import { USER_ROLES } from '../../lib/utils';
 
 export const Topbar = ({ onMenuClick, title }) => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState('');
 
   const getInitials = (firstName, lastName) => {
     return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
   };
 
   const roleInfo = user?.role ? USER_ROLES[user.role] : null;
+
+  const handleSearch = (e) => {
+    if (e.key === 'Enter' && searchQuery.trim()) {
+      navigate(`/search-candidates?q=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery('');
+    }
+  };
 
   return (
     <header 
@@ -50,11 +60,14 @@ export const Topbar = ({ onMenuClick, title }) => {
         {/* Right side */}
         <div className="flex items-center gap-3">
           {/* Search (desktop only) */}
-          <div className="hidden md:flex items-center gap-2 bg-slate-100 rounded-lg px-3 py-2">
-            <Search size={16} className="text-slate-400" />
+          <div className="hidden md:flex items-center gap-2 bg-slate-100 rounded-lg px-3 py-2 focus-within:bg-slate-200 transition-colors">
+            <Search size={16} className="text-slate-400 flex-shrink-0" />
             <input
               type="text"
-              placeholder="Buscar..."
+              placeholder="Buscar candidatos..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleSearch}
               className="bg-transparent border-none outline-none text-sm w-48 placeholder:text-slate-400"
               data-testid="search-input"
             />

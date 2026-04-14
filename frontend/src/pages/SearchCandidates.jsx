@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { apiRequest, formatCurrency, formatDate } from '../lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -38,10 +38,11 @@ const EXPERIENCE_RANGE_OPTIONS = [
 
 export default function SearchCandidates() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   
   // Filter states
   const [filters, setFilters] = useState({
-    name: '',
+    name: searchParams.get('q') || '',
     candidate_status: '__all__',
     experience_range: '__all__',
     professional_level_id: '__all__',
@@ -68,6 +69,14 @@ export default function SearchCandidates() {
   const [languages, setLanguages] = useState([]);
   
   const limit = 15;
+
+  // Si viene ?q= desde el Topbar, ejecutar búsqueda automáticamente
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (q && q.trim()) {
+      searchCandidates();
+    }
+  }, []);
 
   // Load catalogs
   useEffect(() => {
