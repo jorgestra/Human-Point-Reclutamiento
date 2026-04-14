@@ -65,11 +65,16 @@ export const Candidates = () => {
     location: '',
     expected_salary: '',
     salary_currency: 'GTQ',
-    skills: '',
+    skills: [],
     source: 'portal',
     notes: '',
     experience: [],
-    education: []
+    education: [],
+    candidate_status: 'available',
+    experience_range: '',
+    professional_level_id: '',
+    professional_area_ids: [],
+    language_ids: []
   };
 
   const [formData, setFormData] = useState(initialFormState);
@@ -112,15 +117,38 @@ export const Candidates = () => {
       const payload = {
         ...formData,
         expected_salary: formData.expected_salary ? parseFloat(formData.expected_salary) : null,
-        skills: formData.skills.split(',').map(s => s.trim()).filter(Boolean),
+        skills: Array.isArray(formData.skills) ? formData.skills : formData.skills.split(',').map(s => s.trim()).filter(Boolean),
         experience: formData.experience,
-        education: formData.education
+        education: formData.education,
+        professional_level_id: formData.professional_level_id || null,
+        experience_range: formData.experience_range || null,
+        candidate_status: formData.candidate_status || 'available'
       };
+
+      // Quitar campos que no van en el POST principal
+      delete payload.professional_area_ids;
+      delete payload.language_ids;
 
       const res = await apiRequest('/candidates', {
         method: 'POST',
         body: JSON.stringify(payload)
       });
+
+      // Sync áreas profesionales
+      if (formData.professional_area_ids?.length > 0 && res.id) {
+        await apiRequest(`/candidates/${res.id}/areas/sync`, {
+          method: 'PUT',
+          body: JSON.stringify(formData.professional_area_ids)
+        });
+      }
+
+      // Sync idiomas
+      if (formData.language_ids?.length > 0 && res.id) {
+        await apiRequest(`/candidates/${res.id}/languages/sync`, {
+          method: 'PUT',
+          body: JSON.stringify(formData.language_ids)
+        });
+      }
 
       // Upload CV if provided
       if (cvFile && res.id) {
@@ -405,8 +433,102 @@ export const Candidates = () => {
                   </Select>
                 </div>
                 <div className="space-y-2">
+                  <Label>Estado</Label>
+                  <Select value={formData.candidate_status} onValueChange={(v) => setFormData({ ...formData, candidate_status: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="available">Disponible</SelectItem>
+                      <SelectItem value="talent_pool">Talent Pool</SelectItem>
+                      <SelectItem value="no_response">No responde</SelectItem>
+                      <SelectItem value="disqualified">Descalificado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Rango de Experiencia</Label>
+                  <Select value={formData.experience_range} onValueChange={(v) => setFormData({ ...formData, experience_range: v })}>
+                    <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0-2">0-2 años</SelectItem>
+                      <SelectItem value="3-5">3-5 años</SelectItem>
+                      <SelectItem value="5-10">5-10 años</SelectItem>
+                      <SelectItem value="+10">+10 años</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Nivel Profesional</Label>
+                  <Select value={formData.professional_level_id} onValueChange={(v) => setFormData({ ...formData, professional_level_id: v })}>
+                    <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+                    <SelectContent>
+                      {professionalLevels.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="col-span-2 space-y-2">
+                  <Label>Áreas Profesionales</Label>
+                  <div className="flex flex-wrap gap-2 min-h-[36px] border border-slate-200 rounded-md p-2">
+                    {formData.professional_area_ids.map(id => {
+                      const area = professionalAreas.find(a => a.id === id);
+                      return area ? (
+                        <span key={id} className="inline-flex items-center gap-1 bg-cyan-50 text-cyan-700 text-xs px-2 py-1 rounded-full">
+                          {area.name}
+                          <button type="button" onClick={() => setFormData({ ...formData, professional_area_ids: formData.professional_area_ids.filter(a => a !== id) })} className="text-cyan-500 hover:text-cyan-700">×</button>
+                        </span>
+                      ) : null;
+                    })}
+                    <Select onValueChange={(v) => { if (!formData.professional_area_ids.includes(v)) setFormData({ ...formData, professional_area_ids: [...formData.professional_area_ids, v] }); }}>
+                      <SelectTrigger className="h-6 w-auto border-dashed text-xs px-2"><SelectValue placeholder="+ Agregar área" /></SelectTrigger>
+                      <SelectContent>{professionalAreas.filter(a => !formData.professional_area_ids.includes(a.id)).map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="col-span-2 space-y-2">
+                  <Label>Idiomas</Label>
+                  <div className="flex flex-wrap gap-2 min-h-[36px] border border-slate-200 rounded-md p-2">
+                    {formData.language_ids.map(id => {
+                      const lang = languages.find(l => l.id === id);
+                      return lang ? (
+                        <span key={id} className="inline-flex items-center gap-1 bg-purple-50 text-purple-700 text-xs px-2 py-1 rounded-full">
+                          {lang.name} {lang.level ? `(${lang.level})` : ''}
+                          <button type="button" onClick={() => setFormData({ ...formData, language_ids: formData.language_ids.filter(l => l !== id) })} className="text-purple-500 hover:text-purple-700">×</button>
+                        </span>
+                      ) : null;
+                    })}
+                    <Select onValueChange={(v) => { if (!formData.language_ids.includes(v)) setFormData({ ...formData, language_ids: [...formData.language_ids, v] }); }}>
+                      <SelectTrigger className="h-6 w-auto border-dashed text-xs px-2"><SelectValue placeholder="+ Agregar idioma" /></SelectTrigger>
+                      <SelectContent>{languages.filter(l => !formData.language_ids.includes(l.id)).map(l => <SelectItem key={l.id} value={l.id}>{l.name} {l.level ? `(${l.level})` : ''}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="col-span-2 space-y-2">
                   <Label>Habilidades</Label>
-                  <Input value={formData.skills} onChange={(e) => setFormData({ ...formData, skills: e.target.value })} placeholder="React, Node.js, Python..." data-testid="candidate-skills-input" />
+                  <div className="flex flex-wrap gap-2 min-h-[36px] border border-slate-200 rounded-md p-2">
+                    {(formData.skills || []).map((skill, i) => (
+                      <span key={i} className="inline-flex items-center gap-1 bg-slate-100 text-slate-700 text-xs px-2 py-1 rounded-full">
+                        {skill}
+                        <button type="button" onClick={() => setFormData({ ...formData, skills: formData.skills.filter((_, idx) => idx !== i) })} className="text-slate-400 hover:text-red-500">×</button>
+                      </span>
+                    ))}
+                    <input
+                      type="text"
+                      placeholder="Escribir habilidad + Enter"
+                      className="text-xs border-none outline-none bg-transparent flex-1 min-w-[150px]"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ',') {
+                          e.preventDefault();
+                          const val = e.target.value.trim();
+                          if (val && !formData.skills.includes(val)) {
+                            setFormData({ ...formData, skills: [...(formData.skills || []), val] });
+                            e.target.value = '';
+                          }
+                        }
+                      }}
+                      data-testid="candidate-skills-input"
+                    />
+                  </div>
+                  <p className="text-xs text-slate-400">Presiona Enter o coma para agregar cada habilidad</p>
+                </div>
                 </div>
                 <div className="col-span-2 space-y-2">
                   <Label>Notas</Label>

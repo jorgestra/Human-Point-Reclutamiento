@@ -14,8 +14,7 @@ import {
   Settings,
   LogOut,
   ChevronLeft,
-  Menu,
-  Search
+  Menu
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -27,7 +26,6 @@ const navItems = [
   { icon: FileText, label: 'Requisiciones', path: '/requisitions', roles: ['admin', 'recruiter', 'hiring_manager'] },
   { icon: Briefcase, label: 'Vacantes', path: '/vacancies', roles: ['admin', 'recruiter', 'hiring_manager', 'viewer'] },
   { icon: Users, label: 'Candidatos', path: '/candidates', roles: ['admin', 'recruiter', 'hiring_manager', 'viewer'] },
-  { icon: Search, label: 'Buscar Candidatos', path: '/search-candidates', roles: ['admin', 'recruiter', 'hiring_manager'] },
   { icon: Calendar, label: 'Entrevistas', path: '/interviews', roles: ['admin', 'recruiter', 'hiring_manager'] },
   { icon: FileCheck, label: 'Ofertas', path: '/offers', roles: ['admin', 'recruiter'] },
   { icon: UserCheck, label: 'Contrataciones', path: '/hirings', roles: ['admin', 'recruiter'] },

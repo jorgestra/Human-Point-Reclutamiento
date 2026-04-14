@@ -53,8 +53,8 @@ export const Vacancies = () => {
     requisition_id: searchParams.get('requisition') || '',
     title: '',
     description: '',
-    requirements: '',
-    benefits: '',
+    requirements: [],
+    benefits: [],
     location: '',
     job_type: 'full_time',
     salary_min: '',
@@ -62,7 +62,8 @@ export const Vacancies = () => {
     is_internal: false,
     is_external: true,
     deadline: '',
-    empresa_id: ''
+    empresa_id: '',
+    currency: 'GTQ'
   };
 
   const [formData, setFormData] = useState(initialFormState);
@@ -111,13 +112,18 @@ export const Vacancies = () => {
   const loadRequisitionData = async (reqId) => {
     try {
       const req = await apiRequest(`/requisitions/${reqId}`);
+      const toArray = (val) => {
+        if (!val) return [];
+        if (Array.isArray(val)) return val;
+        return val.split('\n').map(s => s.replace(/^[-•*✓]\s*/, '').trim()).filter(Boolean);
+      };
       setFormData(prev => ({
         ...prev,
         requisition_id: reqId,
         title: req.title,
         description: req.justification || req.requirements || `Vacante para el puesto de ${req.title}`,
-        requirements: req.requirements || '',
-        benefits: req.benefits || '',
+        requirements: toArray(req.requirements),
+        benefits: toArray(req.benefits),
         location: req.location || '',
         job_type: req.job_type,
         salary_min: req.salary_min,
@@ -136,7 +142,14 @@ export const Vacancies = () => {
         ...formData,
         salary_min: parseFloat(formData.salary_min),
         salary_max: parseFloat(formData.salary_max),
-        deadline: formData.deadline ? new Date(formData.deadline).toISOString() : null
+        deadline: formData.deadline ? new Date(formData.deadline).toISOString() : null,
+        // Convertir arrays a string para el backend
+        requirements: Array.isArray(formData.requirements)
+          ? formData.requirements.join('\n')
+          : formData.requirements,
+        benefits: Array.isArray(formData.benefits)
+          ? formData.benefits.join('\n')
+          : formData.benefits
       };
 
       if (editingVacancy) {
@@ -165,13 +178,19 @@ export const Vacancies = () => {
 
   const handleEdit = (vacancy) => {
     setEditingVacancy(vacancy);
+    // Convertir strings a arrays si vienen del backend como texto
+    const toArray = (val) => {
+      if (!val) return [];
+      if (Array.isArray(val)) return val;
+      return val.split('\n').map(s => s.replace(/^[-•*]\s*/, '').trim()).filter(Boolean);
+    };
     setFormData({
       requisition_id: vacancy.requisition_id,
       empresa_id: vacancy.empresa_id || '',
       title: vacancy.title,
       description: vacancy.description,
-      requirements: vacancy.requirements,
-      benefits: vacancy.benefits || '',
+      requirements: toArray(vacancy.requirements),
+      benefits: toArray(vacancy.benefits),
       location: vacancy.location,
       job_type: vacancy.job_type,
       salary_min: vacancy.salary_min,
@@ -484,22 +503,64 @@ export const Vacancies = () => {
               </div>
               <div className="col-span-2 space-y-2">
                 <Label>Requisitos *</Label>
-                <Textarea
-                  value={formData.requirements}
-                  onChange={(e) => setFormData({ ...formData, requirements: e.target.value })}
-                  rows={3}
-                  required
-                  data-testid="vacancy-requirements-input"
-                />
+                <div className="border border-slate-200 rounded-md p-2 space-y-2 min-h-[80px]">
+                  {(formData.requirements || []).map((req, i) => (
+                    <div key={i} className="flex items-center gap-2 bg-slate-50 rounded px-2 py-1">
+                      <span className="text-cyan-500 text-xs">•</span>
+                      <span className="flex-1 text-sm text-slate-700">{req}</span>
+                      <button type="button" onClick={() => setFormData({ ...formData, requirements: formData.requirements.filter((_, idx) => idx !== i) })} className="text-slate-400 hover:text-red-500 text-xs">×</button>
+                    </div>
+                  ))}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Escribe un requisito y presiona Enter..."
+                      className="flex-1 text-sm border border-dashed border-slate-300 rounded px-2 py-1 outline-none focus:border-cyan-400"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          const val = e.target.value.trim();
+                          if (val) {
+                            setFormData({ ...formData, requirements: [...(formData.requirements || []), val] });
+                            e.target.value = '';
+                          }
+                        }
+                      }}
+                      data-testid="vacancy-requirements-input"
+                    />
+                  </div>
+                </div>
+                {(formData.requirements || []).length === 0 && <p className="text-xs text-red-400">Agrega al menos un requisito</p>}
               </div>
               <div className="col-span-2 space-y-2">
                 <Label>Beneficios</Label>
-                <Textarea
-                  value={formData.benefits}
-                  onChange={(e) => setFormData({ ...formData, benefits: e.target.value })}
-                  rows={2}
-                  data-testid="vacancy-benefits-input"
-                />
+                <div className="border border-slate-200 rounded-md p-2 space-y-2 min-h-[60px]">
+                  {(formData.benefits || []).map((ben, i) => (
+                    <div key={i} className="flex items-center gap-2 bg-green-50 rounded px-2 py-1">
+                      <span className="text-green-500 text-xs">✓</span>
+                      <span className="flex-1 text-sm text-slate-700">{ben}</span>
+                      <button type="button" onClick={() => setFormData({ ...formData, benefits: formData.benefits.filter((_, idx) => idx !== i) })} className="text-slate-400 hover:text-red-500 text-xs">×</button>
+                    </div>
+                  ))}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Escribe un beneficio y presiona Enter..."
+                      className="flex-1 text-sm border border-dashed border-slate-300 rounded px-2 py-1 outline-none focus:border-green-400"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          const val = e.target.value.trim();
+                          if (val) {
+                            setFormData({ ...formData, benefits: [...(formData.benefits || []), val] });
+                            e.target.value = '';
+                          }
+                        }
+                      }}
+                      data-testid="vacancy-benefits-input"
+                    />
+                  </div>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Ubicación *</Label>
