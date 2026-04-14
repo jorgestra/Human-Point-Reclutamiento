@@ -542,7 +542,6 @@ export const Candidates = () => {
                   </div>
                   <p className="text-xs text-slate-400">Presiona Enter o coma para agregar cada habilidad</p>
                 </div>
-                </div>
                 <div className="col-span-2 space-y-2">
                   <Label>Notas</Label>
                   <Textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} rows={2} data-testid="candidate-notes-input" />
