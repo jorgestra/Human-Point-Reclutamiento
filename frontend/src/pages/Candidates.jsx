@@ -54,6 +54,9 @@ export const Candidates = () => {
   const [search, setSearch] = useState('');
   const [sourceFilter, setSourceFilter] = useState('all');
   const [showForm, setShowForm] = useState(false);
+  const [professionalLevels, setProfessionalLevels] = useState([]);
+  const [professionalAreas, setProfessionalAreas] = useState([]);
+  const [languages, setLanguages] = useState([]);
 
   const initialFormState = {
     first_name: '',
@@ -102,6 +105,16 @@ export const Candidates = () => {
 
   useEffect(() => {
     loadCandidates();
+    // Cargar catálogos para el formulario de creación
+    Promise.all([
+      apiRequest('/catalogs/professional-levels'),
+      apiRequest('/catalogs/professional-areas'),
+      apiRequest('/catalogs/languages')
+    ]).then(([levels, areas, langs]) => {
+      setProfessionalLevels(levels || []);
+      setProfessionalAreas(areas || []);
+      setLanguages(langs || []);
+    }).catch(console.error);
   }, [loadCandidates]);
 
   useEffect(() => {
