@@ -1131,18 +1131,76 @@ async def upload_candidate_cv(candidate_id: str, file: UploadFile = File(...), u
 @api_router.get("/candidates/{candidate_id}/files/{file_id}")
 async def get_candidate_file(candidate_id: str, file_id: str):
     upload_dir = ROOT_DIR / "uploads" / "candidates"
-    file_path = upload_dir / f"{file_id}.pdf"
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="Archivo no encontrado")
-    return FileResponse(str(file_path), media_type="application/pdf")
+    media_types = {
+        '.pdf': 'application/pdf',
+        '.doc': 'application/msword',
+        '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.png': 'image/png'
+    }
+    for ext, media_type in media_types.items():
+        file_path = upload_dir / f"{file_id}{ext}"
+        if file_path.exists():
+            return FileResponse(str(file_path), media_type=media_type)
+    raise HTTPException(status_code=404, detail="Archivo no encontrado")
 
 @api_router.delete("/candidates/{candidate_id}/files/{file_id}")
 async def delete_candidate_file(candidate_id: str, file_id: str, user: dict = Depends(check_role([UserRole.ADMIN, UserRole.RECRUITER]))):
+    upload_dir = ROOT_DIR / "uploads" / "candidates"
+    for ext in ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png']:
+        file_path = upload_dir / f"{file_id}{ext}"
+        if file_path.exists():
+            file_path.unlink()
+            break
     await database.execute(
         "DELETE FROM ATS_CANDIDATOS_DOCUMENTOS WHERE id = ? AND candidate_id = ?",
         (file_id, candidate_id)
     )
     return {"message": "Documento eliminado"}
+
+@api_router.post("/candidates/{candidate_id}/upload-document")
+async def upload_candidate_document(
+    candidate_id: str,
+    document_type: str = Form("other"),
+    file: UploadFile = File(...),
+    user: dict = Depends(check_role([UserRole.ADMIN, UserRole.RECRUITER]))
+):
+    cand = await database.fetch_one(
+        "SELECT id FROM ATS_CANDIDATOS WHERE id = ? AND tenant_id = ?",
+        (candidate_id, user['tenant_id'])
+    )
+    if not cand:
+        raise HTTPException(status_code=404, detail="Candidato no encontrado")
+    allowed_types = {
+        'application/pdf': '.pdf',
+        'application/msword': '.doc',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+        'image/jpeg': '.jpg',
+        'image/png': '.png'
+    }
+    ext = allowed_types.get(file.content_type)
+    if not ext:
+        raise HTTPException(status_code=400, detail="Tipo no permitido. Use PDF, DOC, DOCX, JPG o PNG")
+    content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Archivo muy grande (máx 10MB)")
+    upload_dir = ROOT_DIR / "uploads" / "candidates"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    file_id = str(uuid.uuid4())
+    (upload_dir / f"{file_id}{ext}").write_bytes(content)
+    file_url = f"/api/candidates/{candidate_id}/files/{file_id}"
+    if document_type == 'cv':
+        await database.execute(
+            "UPDATE ATS_CANDIDATOS SET cv_url=?, updated_at=GETUTCDATE() WHERE id = ?",
+            (file_url, candidate_id)
+        )
+    await database.execute(
+        """INSERT INTO ATS_CANDIDATOS_DOCUMENTOS (id, candidate_id, document_type, document_name, file_url, uploaded_by)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (file_id, candidate_id, document_type, file.filename or f'documento{ext}', file_url, user['id'])
+    )
+    return {"message": "Documento subido", "file_id": file_id, "url": file_url}
 
 # Experience CRUD
 @api_router.post("/candidates/{candidate_id}/experience")

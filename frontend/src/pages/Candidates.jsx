@@ -678,6 +678,7 @@ export const CandidateDetail = () => {
   const [showEditForm, setShowEditForm] = useState(false);
   const [editFormData, setEditFormData] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [selectedDocType, setSelectedDocType] = useState('cv');
   
   // Experience CRUD states
   const [showExpDialog, setShowExpDialog] = useState(false);
@@ -1026,7 +1027,8 @@ export const CandidateDetail = () => {
       const token = getToken();
       const form = new FormData();
       form.append('file', file);
-      const response = await fetch(`${API_URL}/candidates/${id}/upload?file_type=cv`, {
+      form.append('document_type', selectedDocType);
+      const response = await fetch(`${API_URL}/candidates/${id}/upload-document`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: form
@@ -1482,8 +1484,20 @@ export const CandidateDetail = () => {
             <TabsContent value="documents" className="mt-4">
               <Card className="border-slate-200">
                 <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle className="text-lg">Documentos y CV</CardTitle>
-                  <div>
+                  <CardTitle className="text-lg">Documentos y Archivos</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={selectedDocType}
+                      onChange={(e) => setSelectedDocType(e.target.value)}
+                      className="text-xs border border-slate-200 rounded-md px-2 py-1.5 bg-white text-slate-700 outline-none"
+                    >
+                      <option value="cv">CV / Currículum</option>
+                      <option value="cover_letter">Carta de Presentación</option>
+                      <option value="evaluation">Evaluación / Examen</option>
+                      <option value="reference">Carta de Referencia</option>
+                      <option value="certificate">Certificado / Título</option>
+                      <option value="other">Otro Documento</option>
+                    </select>
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -1505,66 +1519,75 @@ export const CandidateDetail = () => {
                   </div>
                 </CardHeader>
                 <CardContent>
+                  <p className="text-xs text-slate-400 mb-4">Formatos: PDF, DOC, DOCX, JPG, PNG · Máx 10MB</p>
                   {candidate.documents?.length > 0 ? (
                     <div className="space-y-3">
-                      {candidate.documents.map((doc) => (
-                        <div
-                          key={doc.id}
-                          className="flex items-center justify-between p-3 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200"
-                          data-testid={`doc-item-${doc.id}`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                              <FileText size={18} className="text-blue-600" />
+                      {candidate.documents.map((doc) => {
+                        const docConfig = {
+                          cv:           { label: 'CV',                  color: 'bg-blue-50 text-blue-600' },
+                          cover_letter: { label: 'Carta Presentación',  color: 'bg-purple-50 text-purple-600' },
+                          evaluation:   { label: 'Evaluación',          color: 'bg-orange-50 text-orange-600' },
+                          reference:    { label: 'Referencia',          color: 'bg-green-50 text-green-600' },
+                          certificate:  { label: 'Certificado',         color: 'bg-cyan-50 text-cyan-600' },
+                          other:        { label: 'Documento',           color: 'bg-slate-100 text-slate-600' },
+                        };
+                        const cfg = docConfig[doc.document_type] || docConfig.other;
+                        return (
+                          <div
+                            key={doc.id}
+                            className="flex items-center justify-between p-3 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200"
+                            data-testid={`doc-item-${doc.id}`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${cfg.color}`}>
+                                <FileText size={18} />
+                              </div>
+                              <div>
+                                <p className="font-medium text-slate-900 text-sm">{doc.document_name || doc.filename || 'Archivo'}</p>
+                                <p className="text-xs text-slate-400">
+                                  {cfg.label} · {formatDate(doc.uploaded_at)}
+                                </p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-medium text-slate-900 text-sm">{doc.filename}</p>
-                              <p className="text-xs text-slate-400">
-                                {formatFileSize(doc.file_size)} · {formatDate(doc.uploaded_at)}
-                              </p>
+                            <div className="flex items-center gap-2">
+                              <button
+                                className="inline-flex items-center justify-center w-8 h-8 rounded hover:bg-slate-200 text-slate-600"
+                                data-testid={`download-doc-${doc.id}`}
+                                onClick={async () => {
+                                  const token = getToken();
+                                  const res = await fetch(`${API_URL}/candidates/${id}/files/${doc.id}`, {
+                                    headers: { Authorization: `Bearer ${token}` }
+                                  });
+                                  const blob = await res.blob();
+                                  const url = URL.createObjectURL(blob);
+                                  const a = document.createElement('a');
+                                  a.href = url;
+                                  a.download = doc.document_name || doc.filename || 'archivo';
+                                  a.click();
+                                  URL.revokeObjectURL(url);
+                                }}
+                              >
+                                <Download size={14} />
+                              </button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="w-8 h-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                onClick={() => handleDeleteFile(doc.id)}
+                                data-testid={`delete-doc-${doc.id}`}
+                              >
+                                <X size={14} />
+                              </Button>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <a
-                              href={`${API_URL}/candidates/${id}/files/${doc.id}`}
-                              download={doc.filename}
-                              className="inline-flex items-center justify-center w-8 h-8 rounded hover:bg-slate-200 text-slate-600"
-                              data-testid={`download-doc-${doc.id}`}
-                              onClick={async (e) => {
-                                e.preventDefault();
-                                const token = getToken();
-                                const res = await fetch(`${API_URL}/candidates/${id}/files/${doc.id}`, {
-                                  headers: { Authorization: `Bearer ${token}` }
-                                });
-                                const blob = await res.blob();
-                                const url = URL.createObjectURL(blob);
-                                const a = document.createElement('a');
-                                a.href = url;
-                                a.download = doc.filename;
-                                a.click();
-                                URL.revokeObjectURL(url);
-                              }}
-                            >
-                              <Download size={14} />
-                            </a>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="w-8 h-8 text-red-500 hover:text-red-600 hover:bg-red-50"
-                              onClick={() => handleDeleteFile(doc.id)}
-                              data-testid={`delete-doc-${doc.id}`}
-                            >
-                              <X size={14} />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="text-center py-10 text-slate-400">
                       <PaperclipIcon className="w-10 h-10 mx-auto mb-3 opacity-40" />
                       <p className="text-sm">Sin documentos adjuntos</p>
-                      <p className="text-xs mt-1">Sube CV, cartas de presentación u otros archivos</p>
+                      <p className="text-xs mt-1">Sube CV, evaluaciones, certificados u otros archivos</p>
                     </div>
                   )}
                 </CardContent>
