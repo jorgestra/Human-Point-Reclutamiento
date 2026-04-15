@@ -403,7 +403,7 @@ export const Candidates = () => {
                       </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                )))
+                ))
               )}
             </TableBody>
           </Table>
