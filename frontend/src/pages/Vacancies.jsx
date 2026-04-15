@@ -29,6 +29,8 @@ import {
   Copy,
   ExternalLink,
   MoreHorizontal
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -36,6 +38,22 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
+
+
+// Helper para header ordenable
+const SortHeader = ({ label, field, sortKey, sortDir, onSort, className = "" }) => (
+  <TableHead
+    className={`cursor-pointer select-none hover:bg-slate-50 ${className}`}
+    onClick={() => onSort(field)}
+  >
+    <div className="flex items-center gap-1">
+      {label}
+      {sortKey === field
+        ? sortDir === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+        : <ChevronUp size={14} className="opacity-20" />}
+    </div>
+  </TableHead>
+);
 
 export const Vacancies = () => {
   const navigate = useNavigate();
@@ -68,7 +86,33 @@ export const Vacancies = () => {
 
   const [formData, setFormData] = useState(initialFormState);
 
-  useEffect(() => {
+  
+  const [sortKey, setSortKey] = useState('created_at');
+  const [sortDir, setSortDir] = useState('desc');
+
+  const handleSort = (key) => {
+    if (sortKey === key) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  };
+
+  const sortedItems = (items) => {
+    if (!items?.length) return items || [];
+    return [...items].sort((a, b) => {
+      let valA = a[sortKey] ?? '';
+      let valB = b[sortKey] ?? '';
+      if (typeof valA === 'number' && typeof valB === 'number')
+        return sortDir === 'asc' ? valA - valB : valB - valA;
+      return sortDir === 'asc'
+        ? String(valA).toLowerCase().localeCompare(String(valB).toLowerCase())
+        : String(valB).toLowerCase().localeCompare(String(valA).toLowerCase());
+    });
+  };
+
+useEffect(() => {
     loadVacancies();
     loadRequisitions();
     apiRequest('/companies').then(setCompanies).catch(() => {});
@@ -310,13 +354,13 @@ export const Vacancies = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Vacante</TableHead>
-                <TableHead>Empresa</TableHead>
-                <TableHead>Ubicación</TableHead>
-                <TableHead>Salario</TableHead>
-                <TableHead>Aplicaciones</TableHead>
-                <TableHead>Publicación</TableHead>
-                <TableHead>Estado</TableHead>
+                <SortHeader label="Vacante" field="title" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortHeader label="Empresa" field="empresa_name" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortHeader label="Ubicación" field="location" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortHeader label="Salario" field="salary_min" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortHeader label="Aplicaciones" field="applications_count" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortHeader label="Publicación" field="created_at" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortHeader label="Estado" field="status" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -334,7 +378,7 @@ export const Vacancies = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredVacancies.map((vacancy) => {
+                sortedItems(filteredVacancies).map((vacancy) => {
                   const status = VACANCY_STATUS[vacancy.status];
                   return (
                     <TableRow key={vacancy.id} className="hover:bg-slate-50" data-testid={`vacancy-row-${vacancy.id}`}>

@@ -28,6 +28,8 @@ import {
   Trash2,
   Send,
   MoreHorizontal
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -35,6 +37,22 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
+
+
+// Helper para header ordenable
+const SortHeader = ({ label, field, sortKey, sortDir, onSort, className = "" }) => (
+  <TableHead
+    className={`cursor-pointer select-none hover:bg-slate-50 ${className}`}
+    onClick={() => onSort(field)}
+  >
+    <div className="flex items-center gap-1">
+      {label}
+      {sortKey === field
+        ? sortDir === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+        : <ChevronUp size={14} className="opacity-20" />}
+    </div>
+  </TableHead>
+);
 
 export const Requisitions = () => {
   const navigate = useNavigate();
@@ -66,7 +84,33 @@ export const Requisitions = () => {
     empresa_id: ''
   });
 
-  useEffect(() => {
+  
+  const [sortKey, setSortKey] = useState('created_at');
+  const [sortDir, setSortDir] = useState('desc');
+
+  const handleSort = (key) => {
+    if (sortKey === key) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  };
+
+  const sortedItems = (items) => {
+    if (!items?.length) return items || [];
+    return [...items].sort((a, b) => {
+      let valA = a[sortKey] ?? '';
+      let valB = b[sortKey] ?? '';
+      if (typeof valA === 'number' && typeof valB === 'number')
+        return sortDir === 'asc' ? valA - valB : valB - valA;
+      return sortDir === 'asc'
+        ? String(valA).toLowerCase().localeCompare(String(valB).toLowerCase())
+        : String(valB).toLowerCase().localeCompare(String(valA).toLowerCase());
+    });
+  };
+
+useEffect(() => {
     loadRequisitions();
     apiRequest('/companies').then(setCompanies).catch(() => {});
   }, [statusFilter]);
@@ -265,13 +309,13 @@ export const Requisitions = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Título</TableHead>
-                <TableHead>Empresa</TableHead>
-                <TableHead>Departamento</TableHead>
-                <TableHead>Posiciones</TableHead>
+                <SortHeader label="Título" field="title" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortHeader label="Empresa" field="empresa_name" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortHeader label="Departamento" field="department" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortHeader label="Posiciones" field="positions_count" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
                 <TableHead>Rango Salarial</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Fecha</TableHead>
+                <SortHeader label="Estado" field="status" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortHeader label="Fecha" field="created_at" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -289,7 +333,7 @@ export const Requisitions = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredRequisitions.map((req) => {
+                sortedItems(filteredRequisitions).map((req) => {
                   const status = REQUISITION_STATUS[req.status];
                   return (
                     <TableRow key={req.id} className="hover:bg-slate-50" data-testid={`requisition-row-${req.id}`}>

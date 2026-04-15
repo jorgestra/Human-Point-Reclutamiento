@@ -18,7 +18,25 @@ import {
   Building2,
   Briefcase,
   CheckCircle
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
+
+
+// Helper para header ordenable
+const SortHeader = ({ label, field, sortKey, sortDir, onSort, className = "" }) => (
+  <TableHead
+    className={`cursor-pointer select-none hover:bg-slate-50 ${className}`}
+    onClick={() => onSort(field)}
+  >
+    <div className="flex items-center gap-1">
+      {label}
+      {sortKey === field
+        ? sortDir === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+        : <ChevronUp size={14} className="opacity-20" />}
+    </div>
+  </TableHead>
+);
 
 export const Hirings = () => {
   const navigate = useNavigate();
@@ -80,7 +98,33 @@ export const Hirings = () => {
     }
   };
 
-  useEffect(() => {
+  
+  const [sortKey, setSortKey] = useState('created_at');
+  const [sortDir, setSortDir] = useState('desc');
+
+  const handleSort = (key) => {
+    if (sortKey === key) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  };
+
+  const sortedItems = (items) => {
+    if (!items?.length) return items || [];
+    return [...items].sort((a, b) => {
+      let valA = a[sortKey] ?? '';
+      let valB = b[sortKey] ?? '';
+      if (typeof valA === 'number' && typeof valB === 'number')
+        return sortDir === 'asc' ? valA - valB : valB - valA;
+      return sortDir === 'asc'
+        ? String(valA).toLowerCase().localeCompare(String(valB).toLowerCase())
+        : String(valB).toLowerCase().localeCompare(String(valA).toLowerCase());
+    });
+  };
+
+useEffect(() => {
     loadHirings();
     loadAcceptedOffers();
   }, []);
@@ -169,11 +213,11 @@ export const Hirings = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>No. Empleado</TableHead>
-                <TableHead>Posición</TableHead>
-                <TableHead>Departamento</TableHead>
-                <TableHead>Salario</TableHead>
-                <TableHead>Fecha Ingreso</TableHead>
+                <SortHeader label="No. Empleado" field="employee_number" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortHeader label="Posición" field="position" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortHeader label="Departamento" field="department" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortHeader label="Salario" field="salary" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortHeader label="Fecha Ingreso" field="start_date" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
                 <TableHead>Estado</TableHead>
               </TableRow>
             </TableHeader>
@@ -191,7 +235,7 @@ export const Hirings = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                hirings.map((hiring) => (
+                sortedItems(hirings).map((hiring) => (
                   <TableRow key={hiring.id} className="hover:bg-slate-50" data-testid={`hiring-row-${hiring.id}`}>
                     <TableCell>
                       <Badge variant="outline" className="font-mono">

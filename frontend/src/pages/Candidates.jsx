@@ -36,7 +36,9 @@ import {
   Download,
   X,
   PaperclipIcon,
-  Building2
+  Building2,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -44,6 +46,21 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
+
+// Helper para header ordenable
+const SortHeader = ({ label, field, sortKey, sortDir, onSort }) => (
+  <TableHead
+    className="cursor-pointer select-none hover:bg-slate-50"
+    onClick={() => onSort(field)}
+  >
+    <div className="flex items-center gap-1">
+      {label}
+      {sortKey === field
+        ? sortDir === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+        : <ChevronUp size={14} className="opacity-20" />}
+    </div>
+  </TableHead>
+);
 
 // List View Component
 export const Candidates = () => {
@@ -57,6 +74,17 @@ export const Candidates = () => {
   const [professionalLevels, setProfessionalLevels] = useState([]);
   const [professionalAreas, setProfessionalAreas] = useState([]);
   const [languages, setLanguages] = useState([]);
+  const [sortKey, setSortKey] = useState('created_at');
+  const [sortDir, setSortDir] = useState('desc');
+
+  const handleSort = (key) => {
+    if (sortKey === key) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  };
 
   const initialFormState = {
     first_name: '',
@@ -255,14 +283,14 @@ export const Candidates = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Candidato</TableHead>
-                <TableHead>Estatus</TableHead>
-                <TableHead>Experiencia</TableHead>
+                <SortHeader label="Candidato" field="first_name" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortHeader label="Estatus" field="candidate_status" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortHeader label="Experiencia" field="experience_range" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
                 <TableHead>Nivel</TableHead>
                 <TableHead>Áreas</TableHead>
                 <TableHead>Idiomas</TableHead>
-                <TableHead>Expectativa</TableHead>
-                <TableHead>Fecha</TableHead>
+                <SortHeader label="Expectativa" field="expected_salary" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortHeader label="Fecha" field="created_at" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -280,7 +308,14 @@ export const Candidates = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                candidates.map((candidate) => (
+                [...candidates].sort((a, b) => {
+                  let valA = a[sortKey] ?? '';
+                  let valB = b[sortKey] ?? '';
+                  if (typeof valA === 'number') return sortDir === 'asc' ? valA - valB : valB - valA;
+                  return sortDir === 'asc'
+                    ? String(valA).toLowerCase().localeCompare(String(valB).toLowerCase())
+                    : String(valB).toLowerCase().localeCompare(String(valA).toLowerCase());
+                }).map((candidate) => (
                   <TableRow 
                     key={candidate.id} 
                     className="hover:bg-slate-50 cursor-pointer" 
@@ -368,7 +403,7 @@ export const Candidates = () => {
                       </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                ))
+                )))
               )}
             </TableBody>
           </Table>

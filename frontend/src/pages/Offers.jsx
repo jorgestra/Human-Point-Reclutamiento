@@ -25,6 +25,8 @@ import {
   Eye,
   UserCheck,
   Edit
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -32,6 +34,22 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
+
+
+// Helper para header ordenable
+const SortHeader = ({ label, field, sortKey, sortDir, onSort, className = "" }) => (
+  <TableHead
+    className={`cursor-pointer select-none hover:bg-slate-50 ${className}`}
+    onClick={() => onSort(field)}
+  >
+    <div className="flex items-center gap-1">
+      {label}
+      {sortKey === field
+        ? sortDir === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+        : <ChevronUp size={14} className="opacity-20" />}
+    </div>
+  </TableHead>
+);
 
 export const Offers = () => {
   const navigate = useNavigate();
@@ -74,7 +92,33 @@ export const Offers = () => {
   const [formData, setFormData] = useState(initialFormState);
   const [editFormData, setEditFormData] = useState(editFormInitialState);
 
-  const loadOffers = React.useCallback(async () => {
+  const loadOffers = React.
+  const [sortKey, setSortKey] = useState('created_at');
+  const [sortDir, setSortDir] = useState('desc');
+
+  const handleSort = (key) => {
+    if (sortKey === key) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  };
+
+  const sortedItems = (items) => {
+    if (!items?.length) return items || [];
+    return [...items].sort((a, b) => {
+      let valA = a[sortKey] ?? '';
+      let valB = b[sortKey] ?? '';
+      if (typeof valA === 'number' && typeof valB === 'number')
+        return sortDir === 'asc' ? valA - valB : valB - valA;
+      return sortDir === 'asc'
+        ? String(valA).toLowerCase().localeCompare(String(valB).toLowerCase())
+        : String(valB).toLowerCase().localeCompare(String(valA).toLowerCase());
+    });
+  };
+
+useCallback(async () => {
     try {
       const endpoint = statusFilter !== 'all' 
         ? `/offers?status=${statusFilter}` 
@@ -278,13 +322,13 @@ export const Offers = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Candidato</TableHead>
-                <TableHead>Empresa</TableHead>
-                <TableHead>Posición</TableHead>
-                <TableHead>Salario</TableHead>
-                <TableHead>Fecha Inicio</TableHead>
-                <TableHead>Expira</TableHead>
-                <TableHead>Estado</TableHead>
+                <SortHeader label="Candidato" field="candidate_name" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortHeader label="Empresa" field="empresa_name" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortHeader label="Posición" field="position_title" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortHeader label="Salario" field="base_salary" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortHeader label="Fecha Inicio" field="start_date" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortHeader label="Expira" field="expiration_date" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortHeader label="Estado" field="status" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -302,7 +346,7 @@ export const Offers = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                offers.map((offer) => {
+                sortedItems(offers).map((offer) => {
                   const status = OFFER_STATUS[offer.status];
                   return (
                     <TableRow key={offer.id} className="hover:bg-slate-50" data-testid={`offer-row-${offer.id}`}>
