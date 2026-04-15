@@ -30,7 +30,9 @@ import {
   ChevronRight,
   AlertCircle,
   Edit,
-  Eye
+  Eye,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
 import {
   DropdownMenu,

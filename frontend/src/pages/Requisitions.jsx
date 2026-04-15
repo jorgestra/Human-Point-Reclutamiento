@@ -27,7 +27,7 @@ import {
   Edit,
   Trash2,
   Send,
-  MoreHorizontal
+  MoreHorizontal,
   ChevronUp,
   ChevronDown
 } from 'lucide-react';

@@ -17,7 +17,7 @@ import {
   Calendar,
   Building2,
   Briefcase,
-  CheckCircle
+  CheckCircle,
   ChevronUp,
   ChevronDown
 } from 'lucide-react';

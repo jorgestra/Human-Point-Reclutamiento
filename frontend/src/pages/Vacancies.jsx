@@ -28,7 +28,7 @@ import {
   XCircle,
   Copy,
   ExternalLink,
-  MoreHorizontal
+  MoreHorizontal,
   ChevronUp,
   ChevronDown
 } from 'lucide-react';

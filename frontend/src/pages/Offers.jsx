@@ -24,7 +24,7 @@ import {
   MoreHorizontal,
   Eye,
   UserCheck,
-  Edit
+  Edit,
   ChevronUp,
   ChevronDown
 } from 'lucide-react';
