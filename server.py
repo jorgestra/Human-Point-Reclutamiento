@@ -1626,6 +1626,88 @@ async def list_evaluations(interview_id: str, user: dict = Depends(get_current_u
     return result
 
 # ============ OFFERS ROUTES ============
+@api_router.post("/interviews/{interview_id}/upload-document")
+async def upload_interview_document(
+    interview_id: str,
+    document_type: str = Form("exam"),
+    file: UploadFile = File(...),
+    user: dict = Depends(check_role([UserRole.ADMIN, UserRole.RECRUITER]))
+):
+    """Sube un archivo a una entrevista (examen, prueba, resultado, etc.)"""
+    interview = await database.fetch_one(
+        "SELECT id FROM ATS_ENTREVISTAS WHERE id = ? AND tenant_id = ?",
+        (interview_id, user['tenant_id'])
+    )
+    if not interview:
+        raise HTTPException(status_code=404, detail="Entrevista no encontrada")
+
+    allowed_types = {
+        'application/pdf': '.pdf',
+        'application/msword': '.doc',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+        'image/jpeg': '.jpg',
+        'image/png': '.png'
+    }
+    ext = allowed_types.get(file.content_type)
+    if not ext:
+        raise HTTPException(status_code=400, detail="Tipo no permitido. Use PDF, DOC, DOCX, JPG o PNG")
+
+    content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Archivo muy grande (máx 10MB)")
+
+    upload_dir = ROOT_DIR / "uploads" / "interviews"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    file_id = str(uuid.uuid4())
+    (upload_dir / f"{file_id}{ext}").write_bytes(content)
+    file_url = f"/api/interviews/{interview_id}/files/{file_id}"
+
+    await database.execute(
+        """INSERT INTO ATS_CANDIDATOS_DOCUMENTOS (id, candidate_id, document_type, document_name, file_url, uploaded_by)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (file_id, interview_id, document_type, file.filename or f'documento{ext}', file_url, user['id'])
+    )
+    return {"message": "Archivo subido", "file_id": file_id, "url": file_url}
+
+@api_router.get("/interviews/{interview_id}/files/{file_id}")
+async def get_interview_file(interview_id: str, file_id: str):
+    upload_dir = ROOT_DIR / "uploads" / "interviews"
+    media_types = {
+        '.pdf': 'application/pdf',
+        '.doc': 'application/msword',
+        '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.png': 'image/png'
+    }
+    for ext, media_type in media_types.items():
+        file_path = upload_dir / f"{file_id}{ext}"
+        if file_path.exists():
+            return FileResponse(str(file_path), media_type=media_type)
+    raise HTTPException(status_code=404, detail="Archivo no encontrado")
+
+@api_router.get("/interviews/{interview_id}/documents")
+async def list_interview_documents(interview_id: str, user: dict = Depends(get_current_user)):
+    rows = await database.fetch_all(
+        "SELECT * FROM ATS_CANDIDATOS_DOCUMENTOS WHERE candidate_id = ? ORDER BY id DESC",
+        (interview_id,)
+    )
+    return [serialize_doc(r) for r in rows]
+
+@api_router.delete("/interviews/{interview_id}/files/{file_id}")
+async def delete_interview_file(interview_id: str, file_id: str, user: dict = Depends(check_role([UserRole.ADMIN, UserRole.RECRUITER]))):
+    upload_dir = ROOT_DIR / "uploads" / "interviews"
+    for ext in ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png']:
+        file_path = upload_dir / f"{file_id}{ext}"
+        if file_path.exists():
+            file_path.unlink()
+            break
+    await database.execute(
+        "DELETE FROM ATS_CANDIDATOS_DOCUMENTOS WHERE id = ? AND candidate_id = ?",
+        (file_id, interview_id)
+    )
+    return {"message": "Archivo eliminado"}
+
 @api_router.post("/offers")
 async def create_offer(data: OfferCreate, user: dict = Depends(check_role([UserRole.ADMIN, UserRole.RECRUITER]))):
     app_row = await database.fetch_one("SELECT * FROM ATS_APLICACIONES WHERE id = ? AND tenant_id = ?", (data.application_id, user['tenant_id']))

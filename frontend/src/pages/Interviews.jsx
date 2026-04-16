@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { apiRequest, formatDate, formatDateTime } from '../lib/utils';
+import { apiRequest, formatDate, formatDateTime, getToken, API_URL } from '../lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -32,7 +32,11 @@ import {
   Edit,
   Eye,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  Upload,
+  Download,
+  X,
+  Paperclip
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -136,6 +140,12 @@ export const Interviews = () => {
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [selectedInterview, setSelectedInterview] = useState(null);
+
+  // Archivos de entrevista
+  const fileInputRef = React.useRef(null);
+  const [interviewDocs, setInterviewDocs] = useState([]);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [selectedDocType, setSelectedDocType] = useState('exam');
   const [editForm, setEditForm] = useState(null);
 
   useEffect(() => {
@@ -236,6 +246,54 @@ export const Interviews = () => {
     setCompletionDialog({ open: true, interviewId });
   };
 
+  const loadInterviewDocs = async (interviewId) => {
+    try {
+      const data = await apiRequest(`/interviews/${interviewId}/documents`);
+      setInterviewDocs(data || []);
+    } catch {
+      setInterviewDocs([]);
+    }
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !selectedInterview) return;
+    setUploadingDoc(true);
+    try {
+      const token = getToken();
+      const form = new FormData();
+      form.append('file', file);
+      form.append('document_type', selectedDocType);
+      const response = await fetch(`${API_URL}/interviews/${selectedInterview.id}/upload-document`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: form
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ detail: 'Error al subir' }));
+        throw new Error(err.detail);
+      }
+      toast.success('Archivo subido');
+      loadInterviewDocs(selectedInterview.id);
+    } catch (error) {
+      toast.error(error.message || 'Error al subir archivo');
+    } finally {
+      setUploadingDoc(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDeleteDoc = async (fileId) => {
+    if (!window.confirm('¿Eliminar este archivo?')) return;
+    try {
+      await apiRequest(`/interviews/${selectedInterview.id}/files/${fileId}`, { method: 'DELETE' });
+      toast.success('Archivo eliminado');
+      loadInterviewDocs(selectedInterview.id);
+    } catch {
+      toast.error('Error al eliminar archivo');
+    }
+  };
+
   const handleComplete = async () => {
     if (!completionNotes.trim()) {
       toast.error('Las notas de cierre son obligatorias');
@@ -261,6 +319,7 @@ export const Interviews = () => {
   const handleViewInterview = (interview) => {
     setSelectedInterview(interview);
     setShowViewDialog(true);
+    loadInterviewDocs(interview.id);
   };
 
   const handleEditInterview = (interview) => {
@@ -908,6 +967,92 @@ export const Interviews = () => {
                   <p className="text-green-600 text-sm">{selectedInterview.completion_notes}</p>
                 </div>
               )}
+
+              {/* Sección de archivos */}
+              <div className="border-t border-slate-100 pt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-medium text-slate-700">Archivos y Exámenes</p>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={selectedDocType}
+                      onChange={(e) => setSelectedDocType(e.target.value)}
+                      className="text-xs border border-slate-200 rounded px-2 py-1 bg-white outline-none"
+                    >
+                      <option value="exam">Examen / Prueba</option>
+                      <option value="result">Resultado</option>
+                      <option value="psychometric">Psicométrico</option>
+                      <option value="technical">Prueba Técnica</option>
+                      <option value="other">Otro</option>
+                    </select>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                      className="hidden"
+                      onChange={handleFileUpload}
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingDoc}
+                      className="text-xs h-7 px-2"
+                    >
+                      <Upload size={12} className="mr-1" />
+                      {uploadingDoc ? 'Subiendo...' : 'Subir'}
+                    </Button>
+                  </div>
+                </div>
+                {interviewDocs.length > 0 ? (
+                  <div className="space-y-2">
+                    {interviewDocs.map((doc) => {
+                      const docLabels = {
+                        exam: 'Examen', result: 'Resultado',
+                        psychometric: 'Psicométrico', technical: 'Prueba Técnica', other: 'Archivo'
+                      };
+                      return (
+                        <div key={doc.id} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-200">
+                          <div className="flex items-center gap-2">
+                            <Paperclip size={14} className="text-slate-400" />
+                            <div>
+                              <p className="text-xs font-medium text-slate-800">{doc.document_name || 'Archivo'}</p>
+                              <p className="text-xs text-slate-400">{docLabels[doc.document_type] || 'Archivo'}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button
+                              className="w-6 h-6 flex items-center justify-center rounded hover:bg-slate-200 text-slate-500"
+                              onClick={async () => {
+                                const token = getToken();
+                                const res = await fetch(`${API_URL}/interviews/${selectedInterview.id}/files/${doc.id}`, {
+                                  headers: { Authorization: `Bearer ${token}` }
+                                });
+                                const blob = await res.blob();
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = doc.document_name || 'archivo';
+                                a.click();
+                                URL.revokeObjectURL(url);
+                              }}
+                            >
+                              <Download size={12} />
+                            </button>
+                            <button
+                              className="w-6 h-6 flex items-center justify-center rounded hover:bg-red-50 text-red-500"
+                              onClick={() => handleDeleteDoc(doc.id)}
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-400 text-center py-3">Sin archivos adjuntos</p>
+                )}
+              </div>
             </div>
           )}
           <DialogFooter>
