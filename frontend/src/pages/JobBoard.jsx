@@ -169,7 +169,7 @@ export const JobDetail = () => {
 
   const loadVacancy = React.useCallback(async () => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/vacancies/public/${id}?tenant_id=default`);
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/vacancies/${id}/public?tenant_id=default`);
       if (!response.ok) throw new Error('Vacancy not found');
       const data = await response.json();
       setVacancy(data);
