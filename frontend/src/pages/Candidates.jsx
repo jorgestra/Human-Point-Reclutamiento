@@ -38,7 +38,8 @@ import {
   PaperclipIcon,
   Building2,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  FileDown
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -1079,6 +1080,110 @@ export const CandidateDetail = () => {
     return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
   };
 
+  const handleGeneratePDF = () => {
+    const EXPERIENCE_LABELS = { '0-2': '0-2 años', '3-5': '3-5 años', '5-10': '5-10 años', '+10': '+10 años' };
+    const STATUS_LABELS = { available: 'Disponible', talent_pool: 'Talent Pool', disqualified: 'Descalificado', no_response: 'No responde', rejected_offer: 'Rechazó oferta' };
+    const exp = (candidate.experience || []).map(e => `
+      <div class="exp-item">
+        <div class="exp-header"><span class="exp-position">${e.position}</span><span class="exp-dates">${e.start_date || ''} – ${e.is_current ? 'Presente' : (e.end_date || '')}</span></div>
+        <div class="exp-company">${e.company}</div>
+        ${e.description ? `<div class="exp-desc">${e.description}</div>` : ''}
+      </div>`).join('');
+    const edu = (candidate.education || []).map(e => `
+      <div class="exp-item">
+        <div class="exp-header"><span class="exp-position">${e.degree}</span><span class="exp-dates">${e.start_date || ''} – ${e.end_date || ''}</span></div>
+        <div class="exp-company">${e.institution}</div>
+        ${e.field_of_study ? `<div class="exp-desc">${e.field_of_study}</div>` : ''}
+      </div>`).join('');
+    const skills = (candidate.skills || []).map(s => `<span class="tag">${s}</span>`).join('');
+    const areas = (candidate.professional_areas || []).map(a => `<span class="tag tag-cyan">${a.name}</span>`).join('');
+    const langs = (candidate.languages || []).map(l => `<span class="tag tag-purple">${l.name}${l.level ? ` (${l.level})` : ''}</span>`).join('');
+    const initials = `${candidate.first_name?.[0] || ''}${candidate.last_name?.[0] || ''}`.toUpperCase();
+    const STATUS_LBL = STATUS_LABELS[candidate.candidate_status] || candidate.candidate_status || '';
+    const EXP_LBL = EXPERIENCE_LABELS[candidate.experience_range] || candidate.experience_range || '';
+
+    const html = `<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"/>
+<title>Perfil — ${candidate.first_name} ${candidate.last_name}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;background:#fff;font-size:13px}
+.page{max-width:800px;margin:0 auto;padding:32px 40px}
+.header{display:flex;align-items:center;justify-content:space-between;padding-bottom:20px;border-bottom:3px solid #004aad;margin-bottom:24px}
+.logo-block{display:flex;align-items:center;gap:10px}
+.logo-icon{width:42px;height:42px;border-radius:9px;background:linear-gradient(135deg,#004aad,#38b6ff);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:15px}
+.brand{font-weight:700;font-size:15px;color:#030940}
+.sub{font-size:11px;color:#64748b}
+.cand-name{font-size:22px;font-weight:700;color:#030940;text-align:right}
+.cand-level{font-size:12px;color:#004aad;text-align:right;margin-top:2px}
+.status-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#e0f2fe;color:#0369a1;margin-top:4px}
+.layout{display:grid;grid-template-columns:195px 1fr;gap:24px}
+.avatar{width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg,#004aad,#38b6ff);display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;font-weight:700;margin-bottom:16px}
+.info-label{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;font-weight:600}
+.info-value{font-size:12px;color:#1e293b;margin-top:2px;word-break:break-word}
+.salary{font-size:14px;font-weight:700;color:#004aad}
+.info-item{margin-bottom:10px}
+.section{margin-bottom:20px}
+.section-title{font-size:11px;text-transform:uppercase;letter-spacing:.8px;font-weight:700;color:#004aad;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:10px}
+.tags{display:flex;flex-wrap:wrap;gap:5px}
+.tag{background:#f1f5f9;color:#475569;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500}
+.tag-cyan{background:#e0f7fa;color:#006064}
+.tag-purple{background:#f3e8ff;color:#6b21a8}
+.exp-item{margin-bottom:12px;padding-bottom:12px;border-bottom:1px dashed #e2e8f0}
+.exp-item:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.exp-header{display:flex;justify-content:space-between;align-items:baseline}
+.exp-position{font-weight:600;font-size:13px}
+.exp-dates{font-size:11px;color:#94a3b8}
+.exp-company{font-size:12px;color:#004aad;margin-top:2px}
+.exp-desc{font-size:11px;color:#64748b;margin-top:4px;line-height:1.5}
+.footer{margin-top:32px;padding-top:12px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;font-size:10px;color:#94a3b8}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.page{padding:20px 28px}}
+</style></head><body>
+<div class="page">
+  <div class="header">
+    <div class="logo-block">
+      <div class="logo-icon">HP</div>
+      <div><p class="brand">Human Point</p><p class="sub">Reclutamiento</p></div>
+    </div>
+    <div>
+      <div class="cand-name">${candidate.first_name} ${candidate.last_name}</div>
+      <div class="cand-level">${candidate.professional_level_name || ''}</div>
+      <div style="text-align:right"><span class="status-badge">${STATUS_LBL}</span></div>
+    </div>
+  </div>
+  <div class="layout">
+    <div>
+      <div class="avatar">${initials}</div>
+      ${candidate.email ? `<div class="info-item"><div class="info-label">Email</div><div class="info-value">${candidate.email}</div></div>` : ''}
+      ${candidate.phone ? `<div class="info-item"><div class="info-label">Teléfono</div><div class="info-value">${candidate.phone}</div></div>` : ''}
+      ${candidate.location ? `<div class="info-item"><div class="info-label">Ubicación</div><div class="info-value">${candidate.location}</div></div>` : ''}
+      ${candidate.expected_salary ? `<div class="info-item"><div class="info-label">Expectativa</div><div class="info-value salary">${candidate.salary_currency || 'GTQ'} ${Number(candidate.expected_salary).toLocaleString()}</div></div>` : ''}
+      ${EXP_LBL ? `<div class="info-item"><div class="info-label">Experiencia</div><div class="info-value">${EXP_LBL}</div></div>` : ''}
+      ${candidate.linkedin_url ? `<div class="info-item"><div class="info-label">LinkedIn</div><div class="info-value">${candidate.linkedin_url}</div></div>` : ''}
+    </div>
+    <div>
+      ${skills ? `<div class="section"><div class="section-title">Habilidades</div><div class="tags">${skills}</div></div>` : ''}
+      ${areas ? `<div class="section"><div class="section-title">Áreas Profesionales</div><div class="tags">${areas}</div></div>` : ''}
+      ${langs ? `<div class="section"><div class="section-title">Idiomas</div><div class="tags">${langs}</div></div>` : ''}
+      ${exp ? `<div class="section"><div class="section-title">Experiencia Laboral</div>${exp}</div>` : ''}
+      ${edu ? `<div class="section"><div class="section-title">Educación</div>${edu}</div>` : ''}
+      ${candidate.notes ? `<div class="section"><div class="section-title">Notas</div><p style="font-size:12px;color:#64748b;line-height:1.6">${candidate.notes}</p></div>` : ''}
+    </div>
+  </div>
+  <div class="footer">
+    <span>Human Point Reclutamiento · ITligencia</span>
+    <span>Generado el ${new Date().toLocaleDateString('es-GT',{year:'numeric',month:'long',day:'numeric'})}</span>
+  </div>
+</div>
+</body></html>`;
+
+    const win = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); }, 600);
+  };
+
   return (
     <div className="space-y-6" data-testid="candidate-detail-page">
       {/* Header */}
@@ -1095,6 +1200,10 @@ export const CandidateDetail = () => {
         <Button variant="outline" onClick={handleEdit} data-testid="edit-candidate-btn">
           <Edit size={16} className="mr-2" />
           Editar
+        </Button>
+        <Button variant="outline" onClick={handleGeneratePDF} data-testid="pdf-candidate-btn" className="border-blue-200 text-blue-700 hover:bg-blue-50">
+          <FileDown size={16} className="mr-2" />
+          PDF
         </Button>
       </div>
 
