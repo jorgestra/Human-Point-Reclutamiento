@@ -38,7 +38,7 @@ export const JobBoard = () => {
     try {
       const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/vacancies/public?tenant_id=default`);
       const data = await response.json();
-      setVacancies(data.items || []);
+      setVacancies(Array.isArray(data) ? data : (data.items || []));
     } catch (error) {
       console.error('Error loading vacancies:', error);
     } finally {
