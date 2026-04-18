@@ -2181,7 +2181,7 @@ async def get_currencies():
 # ============ PIPELINE STAGES (configurables) ============
 
 class PipelineStageCreate(BaseModel):
-    code: str
+    code: Optional[str] = None
     name: str
     color: Optional[str] = "#64748b"
     stage_order: Optional[int] = 99
@@ -2219,12 +2219,29 @@ async def list_pipeline_stages(user: dict = Depends(get_current_user)):
 @api_router.post("/pipeline/stages")
 async def create_pipeline_stage(data: PipelineStageCreate, user: dict = Depends(check_role([UserRole.ADMIN]))):
     sid = str(uuid.uuid4())
+    # Generar code desde el nombre si no se provee
+    import re
+    code = data.code or re.sub(r'[^a-z0-9_]', '', data.name.lower().replace(' ', '_'))
+    if not code:
+        code = f"stage_{sid[:8]}"
     await database.execute(
         """INSERT INTO ATS_PIPELINE_ETAPAS (id, tenant_id, code, name, color, stage_order, is_active, is_default)
            VALUES (?, ?, ?, ?, ?, ?, ?, 0)""",
-        (sid, user['tenant_id'], data.code, data.name, data.color, data.stage_order, 1 if data.is_active else 0)
+        (sid, user['tenant_id'], code, data.name, data.color, data.stage_order, 1 if data.is_active else 0)
     )
     return await database.fetch_one("SELECT * FROM ATS_PIPELINE_ETAPAS WHERE id = ?", (sid,))
+
+@api_router.put("/pipeline/stages/reorder")
+async def reorder_pipeline_stages(orders: List[dict], user: dict = Depends(check_role([UserRole.ADMIN]))):
+    """Recibe [{id, stage_order}] y actualiza el orden. Debe ir ANTES de {stage_id}."""
+    ops = []
+    for item in orders:
+        ops.append((
+            "UPDATE ATS_PIPELINE_ETAPAS SET stage_order=? WHERE id=? AND tenant_id=?",
+            (item['stage_order'], item['id'], user['tenant_id'])
+        ))
+    await database.execute_transaction(ops)
+    return {"message": "Orden actualizado"}
 
 @api_router.put("/pipeline/stages/{stage_id}")
 async def update_pipeline_stage(stage_id: str, data: PipelineStageCreate, user: dict = Depends(check_role([UserRole.ADMIN]))):
@@ -2237,7 +2254,6 @@ async def update_pipeline_stage(stage_id: str, data: PipelineStageCreate, user: 
 
 @api_router.delete("/pipeline/stages/{stage_id}")
 async def delete_pipeline_stage(stage_id: str, user: dict = Depends(check_role([UserRole.ADMIN]))):
-    # No permitir borrar si tiene aplicaciones en esa etapa
     stage = await database.fetch_one("SELECT code FROM ATS_PIPELINE_ETAPAS WHERE id = ?", (stage_id,))
     if stage:
         count = await database.fetch_val(
@@ -2252,17 +2268,6 @@ async def delete_pipeline_stage(stage_id: str, user: dict = Depends(check_role([
     )
     return {"message": "Etapa eliminada"}
 
-@api_router.put("/pipeline/stages/reorder")
-async def reorder_pipeline_stages(orders: List[dict], user: dict = Depends(check_role([UserRole.ADMIN]))):
-    """Recibe [{id, stage_order}] y actualiza el orden."""
-    ops = []
-    for item in orders:
-        ops.append((
-            "UPDATE ATS_PIPELINE_ETAPAS SET stage_order=? WHERE id=? AND tenant_id=?",
-            (item['stage_order'], item['id'], user['tenant_id'])
-        ))
-    await database.execute_transaction(ops)
-    return {"message": "Orden actualizado"}
 
 # ============ PIPELINE (Kanban) ============
 @api_router.get("/pipeline")
