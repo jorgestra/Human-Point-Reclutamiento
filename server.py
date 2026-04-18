@@ -308,12 +308,12 @@ class Application(AuditMixin):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     vacancy_id: str
     candidate_id: str
-    current_stage: PipelineStage = PipelineStage.APPLIED
+    current_stage: Optional[str] = 'applied'
     score: Optional[float] = None
     is_active: bool = True
 
 class PipelineMove(BaseModel):
-    new_stage: PipelineStage
+    new_stage: str  # Acepta cualquier etapa, incluyendo personalizadas
     notes: Optional[str] = None
 
 class InterviewCreate(BaseModel):
@@ -1397,7 +1397,7 @@ async def create_application(data: ApplicationCreate, user: dict = Depends(get_c
     # Insert initial pipeline history
     await database.execute(
         "INSERT INTO ATS_PIPELINE_HISTORIAL (id, application_id, from_stage, to_stage, moved_by) VALUES (?, ?, NULL, ?, ?)",
-        (str(uuid.uuid4()), app_id, PipelineStage.APPLIED.value, user['id'])
+        (str(uuid.uuid4()), app_id, 'applied', user['id'])
     )
     return await database.fetch_one("SELECT * FROM ATS_APLICACIONES WHERE id = ?", (app_id,))
 
@@ -1449,7 +1449,7 @@ async def move_pipeline(app_id: str, move: PipelineMove, user: dict = Depends(ge
         raise HTTPException(status_code=404, detail="Aplicación no encontrada")
 
     # Evitar mover a la misma etapa
-    current_stage = app_row.get('current_stage') or PipelineStage.APPLIED.value
+    current_stage = app_row.get('current_stage') or 'applied'
     if current_stage == move.new_stage.value:
         return {"message": "Candidato ya está en esta etapa", "new_stage": move.new_stage.value}
 
@@ -2518,7 +2518,7 @@ async def link_candidate_to_vacancy(candidate_id: str, vacancy_id: str, user: di
     await database.execute("UPDATE ATS_VACANTES SET applications_count = applications_count + 1 WHERE id = ?", (vacancy_id,))
     await database.execute(
         "INSERT INTO ATS_PIPELINE_HISTORIAL (id, application_id, to_stage, moved_by, notes) VALUES (?, ?, ?, ?, ?)",
-        (str(uuid.uuid4()), app_id, PipelineStage.APPLIED.value, user['id'], 'Vinculación manual desde perfil de candidato')
+        (str(uuid.uuid4()), app_id, 'applied', user['id'], 'Vinculación manual desde perfil de candidato')
     )
     cand_full = await database.fetch_one("SELECT first_name, last_name FROM ATS_CANDIDATOS WHERE id = ?", (candidate_id,))
     return {

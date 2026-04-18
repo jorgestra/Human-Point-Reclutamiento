@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { apiRequest, formatCurrency, PIPELINE_STAGES } from '../lib/utils';
+import { apiRequest, formatCurrency, PIPELINE_STAGES } from '../lib/utils'; // PIPELINE_STAGES como fallback
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Avatar, AvatarFallback } from '../components/ui/avatar';
@@ -38,16 +38,28 @@ export const Dashboard = () => {
   const [companies, setCompanies] = useState([]);
   const [filterEmpresa, setFilterEmpresa] = useState('all');
   const [timeToHire, setTimeToHire] = useState(null);
+  const [pipelineStages, setPipelineStages] = useState({});
 
   useEffect(() => {
     loadDashboard();
     loadCompanies();
+    loadPipelineStageMap();
   }, []);
 
   useEffect(() => {
     loadDashboard();
     loadTimeToHire();
   }, [filterEmpresa]);
+
+  const loadPipelineStageMap = async () => {
+    try {
+      const data = await apiRequest('/pipeline/stages');
+      // Crear mapa code -> {name, color} para lookup rápido
+      const map = {};
+      (data || []).forEach(s => { map[s.code] = { label: s.name, color: 'bg-slate-100 text-slate-700', bgColor: s.color }; });
+      setPipelineStages(map);
+    } catch {}
+  };
 
   const loadDashboard = async () => {
     try {
@@ -100,10 +112,11 @@ export const Dashboard = () => {
   ];
 
   // ✅ Backend devuelve pipeline_stages (no pipeline_distribution)
+  const stageMap = Object.keys(pipelineStages).length > 0 ? pipelineStages : PIPELINE_STAGES;
   const pipelineData = (stats?.pipeline_stages || []).map(item => ({
-    stage: PIPELINE_STAGES[item.stage]?.label || item.stage,
+    stage: stageMap[item.stage]?.label || item.stage,
     count: item.count,
-    fill: PIPELINE_STAGES[item.stage]?.bgColor || '#e2e8f0'
+    fill: stageMap[item.stage]?.bgColor || '#e2e8f0'
   }));
 
   // ✅ Backend devuelve sources con _id (no source_breakdown con source)
@@ -291,8 +304,8 @@ export const Dashboard = () => {
                       <p className="text-sm text-slate-500">{app.vacancy_title}</p>
                     </div>
                   </div>
-                  <div className={`px-3 py-1 rounded-full text-xs font-medium ${PIPELINE_STAGES[app.current_stage]?.color || 'bg-slate-100 text-slate-600'}`}>
-                    {PIPELINE_STAGES[app.current_stage]?.label || app.current_stage}
+                  <div className={`px-3 py-1 rounded-full text-xs font-medium ${stageMap[app.current_stage]?.color || 'bg-slate-100 text-slate-600'}`}>
+                    {stageMap[app.current_stage]?.label || app.current_stage}
                   </div>
                 </div>
               ))}

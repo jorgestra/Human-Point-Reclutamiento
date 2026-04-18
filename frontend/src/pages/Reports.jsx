@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { apiRequest, PIPELINE_STAGES } from '../lib/utils';
+import { apiRequest, PIPELINE_STAGES } from '../lib/utils'; // fallback
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { 
@@ -31,10 +31,16 @@ export const Reports = () => {
   const [loading, setLoading] = useState(true);
   const [companies, setCompanies] = useState([]);
   const [filterEmpresa, setFilterEmpresa] = useState('all');
+  const [pipelineStages, setPipelineStages] = useState({});
 
   useEffect(() => {
     loadCompanies();
     loadMetrics();
+    apiRequest('/pipeline/stages').then(data => {
+      const map = {};
+      (data || []).forEach(s => { map[s.code] = { label: s.name, bgColor: s.color }; });
+      setPipelineStages(map);
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -75,8 +81,9 @@ export const Reports = () => {
   }
 
   // ✅ Backend devuelve pipeline_stages (no conversion_rates)
+  const stageMap = Object.keys(pipelineStages).length > 0 ? pipelineStages : PIPELINE_STAGES;
   const pipelineData = (metrics?.pipeline_stages || []).map(item => ({
-    stage: PIPELINE_STAGES[item.stage]?.label || item.stage,
+    stage: stageMap[item.stage]?.label || item.stage,
     candidatos: item.count
   }));
 
