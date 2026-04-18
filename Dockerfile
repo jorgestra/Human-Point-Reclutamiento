@@ -1,6 +1,5 @@
 FROM python:3.11-slim
 
-# Instalar dependencias base
 RUN apt-get update && apt-get install -y \
     curl \
     gnupg2 \
@@ -10,7 +9,6 @@ RUN apt-get update && apt-get install -y \
     unixodbc-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Instalar ODBC Driver 18 para SQL Server
 RUN curl -sSL https://packages.microsoft.com/keys/microsoft.asc \
     | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
     && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" \
@@ -25,11 +23,14 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copiar archivos críticos explícitamente para invalidar caché
+COPY server.py .
+COPY db.py .
+
+# Copiar resto
 COPY . .
 
-# Cache bust: 2026-04-08
+# Cache bust: 2026-04-17-v2
 EXPOSE 8000
 
-CMD uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000}
-
-# cache-bust-20260417-225418
+CMD sh -c "uvicorn server:app --host 0.0.0.0 --port $PORT"
