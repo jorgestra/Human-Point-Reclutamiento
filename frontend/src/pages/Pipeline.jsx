@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { apiRequest, PIPELINE_STAGES, formatDate } from '../lib/utils';
+import { apiRequest, formatDate } from '../lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Avatar, AvatarFallback } from '../components/ui/avatar';
@@ -25,15 +25,16 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
 
-const STAGE_ORDER = ['applied', 'pre_filter', 'interview_hr', 'interview_tech', 'tests', 'finalist', 'offer', 'hired', 'rejected'];
 
 export const Pipeline = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [pipeline, setPipeline] = useState({});
+  const [stages, setStages] = useState([]);
   const [vacancies, setVacancies] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [selectedVacancy, setSelectedVacancy] = useState(searchParams.get('vacancy') || 'all');
@@ -52,7 +53,14 @@ export const Pipeline = () => {
       if (params.length > 0) endpoint += '?' + params.join('&');
       
       const data = await apiRequest(endpoint);
-      setPipeline(data);
+      // Nuevo formato: {stages: [...], pipeline: {...}}
+      if (data.stages) {
+        setStages(data.stages);
+        setPipeline(data.pipeline);
+      } else {
+        // Fallback compatibilidad hacia atrás
+        setPipeline(data);
+      }
     } catch (error) {
       console.error('Error loading pipeline:', error);
       toast.error('Error al cargar el pipeline');
@@ -121,7 +129,7 @@ export const Pipeline = () => {
         method: 'PUT',
         body: JSON.stringify({ new_stage: moveDialog.newStage, notes: moveNotes })
       });
-      toast.success(`Candidato movido a ${PIPELINE_STAGES[moveDialog.newStage]?.label}`);
+      toast.success(`Candidato movido a ${stages.find(s => s.code === moveDialog.newStage)?.name || moveDialog.newStage}`);
       loadPipeline();
     } catch (error) {
       toast.error('Error al mover candidato');
@@ -182,8 +190,8 @@ export const Pipeline = () => {
       {/* Kanban Board */}
       <div className="overflow-x-auto pb-4">
         <div className="flex gap-4 min-w-max">
-          {STAGE_ORDER.filter(stage => stage !== 'rejected').map((stage) => {
-            const stageInfo = PIPELINE_STAGES[stage];
+          {stages.filter(s => s.code !== 'rejected').map((stageInfo) => {
+            const stage = stageInfo.code;
             const cards = pipeline[stage] || [];
             
             return (
@@ -198,8 +206,8 @@ export const Pipeline = () => {
                   <CardHeader className="p-4 pb-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className={`w-3 h-3 rounded-full`} style={{ backgroundColor: stageInfo?.bgColor }} />
-                        <CardTitle className="text-sm font-semibold">{stageInfo?.label}</CardTitle>
+                        <div className={`w-3 h-3 rounded-full`} style={{ backgroundColor: stageInfo?.color || '#64748b' }} />
+                        <CardTitle className="text-sm font-semibold">{stageInfo?.name}</CardTitle>
                       </div>
                       <Badge variant="secondary" className="text-xs">
                         {cards.length}
@@ -239,6 +247,16 @@ export const Pipeline = () => {
                                 <Calendar className="mr-2 h-4 w-4" />
                                 Agendar Entrevista
                               </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              {stages.filter(s => s.code !== stage).map(s => (
+                                <DropdownMenuItem
+                                  key={s.code}
+                                  onClick={() => setMoveDialog({ open: true, app, newStage: s.code })}
+                                >
+                                  <div className="w-2 h-2 rounded-full mr-2 flex-shrink-0" style={{ backgroundColor: s.color }} />
+                                  Mover a {s.name}
+                                </DropdownMenuItem>
+                              ))}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
@@ -347,7 +365,7 @@ export const Pipeline = () => {
           <div className="py-4">
             <p className="text-slate-600 mb-4">
               ¿Mover a <strong>{moveDialog.app?.candidate?.first_name} {moveDialog.app?.candidate?.last_name}</strong> a{' '}
-              <strong className="text-cyan-600">{PIPELINE_STAGES[moveDialog.newStage]?.label}</strong>?
+              <strong className="text-cyan-600">{stages.find(s => s.code === moveDialog.newStage)?.name || moveDialog.newStage}</strong>?
             </p>
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700">Notas (opcional)</label>

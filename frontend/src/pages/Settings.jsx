@@ -21,7 +21,9 @@ import {
   Languages,
   Settings as SettingsIcon,
   Check,
-  X
+  X,
+  Kanban,
+  GripVertical
 } from 'lucide-react';
 
 // Generic Catalog Manager Component
@@ -159,6 +161,10 @@ export default function Settings() {
   const [professionalLevels, setProfessionalLevels] = useState([]);
   const [professionalAreas, setProfessionalAreas] = useState([]);
   const [languages, setLanguages] = useState([]);
+  const [pipelineStages, setPipelineStages] = useState([]);
+  const [editingStage, setEditingStage] = useState(null);
+  const [stageForm, setStageForm] = useState({ name: '', color: '#64748b', stage_order: 99 });
+  const [showStageForm, setShowStageForm] = useState(false);
   
   // Loading states
   const [loadingCompanies, setLoadingCompanies] = useState(true);
@@ -166,6 +172,51 @@ export default function Settings() {
   const [loadingLevels, setLoadingLevels] = useState(true);
   const [loadingAreas, setLoadingAreas] = useState(true);
   const [loadingLanguages, setLoadingLanguages] = useState(true);
+
+  const loadPipelineStages = async () => {
+    try {
+      const data = await apiRequest('/pipeline/stages');
+      setPipelineStages(data || []);
+    } catch (error) {
+      console.error('Error loading pipeline stages:', error);
+    }
+  };
+
+  const handleSaveStage = async () => {
+    try {
+      if (editingStage) {
+        await apiRequest(`/pipeline/stages/${editingStage.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ ...stageForm, code: editingStage.code })
+        });
+        toast.success('Etapa actualizada');
+      } else {
+        const code = stageForm.name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+        await apiRequest('/pipeline/stages', {
+          method: 'POST',
+          body: JSON.stringify({ ...stageForm, code })
+        });
+        toast.success('Etapa creada');
+      }
+      setShowStageForm(false);
+      setEditingStage(null);
+      setStageForm({ name: '', color: '#64748b', stage_order: 99 });
+      loadPipelineStages();
+    } catch (err) {
+      toast.error(err.message || 'Error al guardar etapa');
+    }
+  };
+
+  const handleDeleteStage = async (stage) => {
+    if (!window.confirm(`¿Eliminar la etapa "${stage.name}"? Solo se puede eliminar si no tiene candidatos.`)) return;
+    try {
+      await apiRequest(`/pipeline/stages/${stage.id}`, { method: 'DELETE' });
+      toast.success('Etapa eliminada');
+      loadPipelineStages();
+    } catch (err) {
+      toast.error(err.message || 'Error al eliminar etapa');
+    }
+  };
 
   // Load data functions
   const loadCompanies = async () => {
@@ -239,6 +290,7 @@ export default function Settings() {
     loadProfessionalLevels();
     loadProfessionalAreas();
     loadLanguages();
+    loadPipelineStages();
   }, []);
 
   // CRUD handlers for Companies
@@ -343,6 +395,10 @@ export default function Settings() {
           <TabsTrigger value="languages" className="flex items-center gap-1.5" data-testid="tab-languages">
             <Languages size={14} />
             <span className="hidden sm:inline">Idiomas</span>
+          </TabsTrigger>
+          <TabsTrigger value="pipeline" className="flex items-center gap-1.5" data-testid="tab-pipeline">
+            <Kanban size={14} />
+            <span className="hidden sm:inline">Pipeline</span>
           </TabsTrigger>
         </TabsList>
 
@@ -634,6 +690,105 @@ export default function Settings() {
               </>
             )}
           />
+        </TabsContent>
+
+        {/* Pipeline Stages Tab */}
+        <TabsContent value="pipeline" className="mt-6">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-slate-900">Etapas del Pipeline</h3>
+                <p className="text-sm text-slate-500 mt-0.5">Configura las etapas del proceso de reclutamiento</p>
+              </div>
+              <Button
+                size="sm"
+                className="bg-slate-900 hover:bg-slate-800"
+                onClick={() => { setEditingStage(null); setStageForm({ name: '', color: '#64748b', stage_order: pipelineStages.length + 1 }); setShowStageForm(true); }}
+              >
+                <Plus size={14} className="mr-1.5" /> Nueva Etapa
+              </Button>
+            </div>
+
+            {showStageForm && (
+              <Card className="border-cyan-200 bg-cyan-50/30">
+                <CardContent className="p-4 space-y-3">
+                  <h4 className="font-medium text-sm text-slate-700">{editingStage ? 'Editar Etapa' : 'Nueva Etapa'}</h4>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="col-span-2 space-y-1">
+                      <label className="text-xs text-slate-500">Nombre *</label>
+                      <input
+                        className="w-full border border-slate-200 rounded-md px-3 py-1.5 text-sm outline-none focus:border-cyan-400"
+                        value={stageForm.name}
+                        onChange={e => setStageForm({ ...stageForm, name: e.target.value })}
+                        placeholder="Ej: Entrevista Final"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-slate-500">Color</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          className="w-10 h-8 border border-slate-200 rounded cursor-pointer"
+                          value={stageForm.color}
+                          onChange={e => setStageForm({ ...stageForm, color: e.target.value })}
+                        />
+                        <span className="text-xs text-slate-400">{stageForm.color}</span>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-slate-500">Orden</label>
+                      <input
+                        type="number"
+                        className="w-full border border-slate-200 rounded-md px-3 py-1.5 text-sm outline-none"
+                        value={stageForm.stage_order}
+                        onChange={e => setStageForm({ ...stageForm, stage_order: parseInt(e.target.value) || 99 })}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" className="bg-slate-900 hover:bg-slate-800" onClick={handleSaveStage}>
+                      <Check size={13} className="mr-1" /> Guardar
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => { setShowStageForm(false); setEditingStage(null); }}>
+                      Cancelar
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            <div className="space-y-2">
+              {pipelineStages.map((stage, idx) => (
+                <div key={stage.id} className="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-lg hover:shadow-sm transition-shadow">
+                  <GripVertical size={16} className="text-slate-300 flex-shrink-0" />
+                  <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: stage.color }} />
+                  <div className="flex-1">
+                    <p className="font-medium text-sm text-slate-900">{stage.name}</p>
+                    <p className="text-xs text-slate-400">Código: {stage.code} · Orden: {stage.stage_order}</p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost" size="icon" className="h-7 w-7"
+                      onClick={() => { setEditingStage(stage); setStageForm({ name: stage.name, color: stage.color, stage_order: stage.stage_order }); setShowStageForm(true); }}
+                    >
+                      <Edit size={13} />
+                    </Button>
+                    {!stage.is_default && (
+                      <Button
+                        variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-50"
+                        onClick={() => handleDeleteStage(stage)}
+                      >
+                        <Trash2 size={13} />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {pipelineStages.length === 0 && (
+                <p className="text-sm text-slate-400 text-center py-8">No hay etapas configuradas</p>
+              )}
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

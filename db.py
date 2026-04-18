@@ -279,3 +279,15 @@ async def get_pipeline_history(application_id: str) -> List[Dict]:
            ORDER BY moved_at""",
         (application_id,)
     )
+
+
+async def get_pipeline_stages(tenant_id: str) -> List[Dict]:
+    """Retorna etapas del pipeline ordenadas, con fallback a etapas por defecto."""
+    rows = await fetch_all(
+        """SELECT id, code, name, color, stage_order, is_active, is_default
+           FROM ATS_PIPELINE_ETAPAS
+           WHERE tenant_id = ? AND is_active = 1
+           ORDER BY stage_order ASC""",
+        (tenant_id,)
+    )
+    return rows

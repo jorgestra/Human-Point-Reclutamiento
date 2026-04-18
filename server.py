@@ -2178,13 +2178,117 @@ async def get_currencies():
         {"code": "MXN", "name": "Peso Mexicano", "symbol": "$"},
     ]
 
+# ============ PIPELINE STAGES (configurables) ============
+
+class PipelineStageCreate(BaseModel):
+    code: str
+    name: str
+    color: Optional[str] = "#64748b"
+    stage_order: Optional[int] = 99
+    is_active: Optional[bool] = True
+
+@api_router.get("/pipeline/stages")
+async def list_pipeline_stages(user: dict = Depends(get_current_user)):
+    """Lista las etapas del pipeline del tenant. Si no tiene, crea las por defecto."""
+    stages = await database.get_pipeline_stages(user['tenant_id'])
+    if not stages:
+        # Seed con etapas por defecto basadas en el enum actual
+        default_stages = [
+            ("applied",       "Aplicado",         "#64748b", 1),
+            ("pre_filter",    "Pre-filtro",        "#f59e0b", 2),
+            ("interview_hr",  "Entrevista RR.HH.", "#3b82f6", 3),
+            ("interview_tech","Entrevista Técnica","#8b5cf6", 4),
+            ("tests",         "Pruebas",           "#06b6d4", 5),
+            ("finalist",      "Finalista",         "#10b981", 6),
+            ("offer",         "Oferta",            "#f97316", 7),
+            ("hired",         "Contratado",        "#22c55e", 8),
+            ("rejected",      "Rechazado",         "#ef4444", 9),
+        ]
+        ops = []
+        for code, name, color, order in default_stages:
+            sid = str(uuid.uuid4())
+            ops.append((
+                """INSERT INTO ATS_PIPELINE_ETAPAS (id, tenant_id, code, name, color, stage_order, is_active, is_default)
+                   VALUES (?, ?, ?, ?, ?, ?, 1, 1)""",
+                (sid, user['tenant_id'], code, name, color, order)
+            ))
+        await database.execute_transaction(ops)
+        stages = await database.get_pipeline_stages(user['tenant_id'])
+    return stages
+
+@api_router.post("/pipeline/stages")
+async def create_pipeline_stage(data: PipelineStageCreate, user: dict = Depends(check_role([UserRole.ADMIN]))):
+    sid = str(uuid.uuid4())
+    await database.execute(
+        """INSERT INTO ATS_PIPELINE_ETAPAS (id, tenant_id, code, name, color, stage_order, is_active, is_default)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 0)""",
+        (sid, user['tenant_id'], data.code, data.name, data.color, data.stage_order, 1 if data.is_active else 0)
+    )
+    return await database.fetch_one("SELECT * FROM ATS_PIPELINE_ETAPAS WHERE id = ?", (sid,))
+
+@api_router.put("/pipeline/stages/{stage_id}")
+async def update_pipeline_stage(stage_id: str, data: PipelineStageCreate, user: dict = Depends(check_role([UserRole.ADMIN]))):
+    await database.execute(
+        """UPDATE ATS_PIPELINE_ETAPAS SET name=?, color=?, stage_order=?, is_active=?
+           WHERE id = ? AND tenant_id = ?""",
+        (data.name, data.color, data.stage_order, 1 if data.is_active else 0, stage_id, user['tenant_id'])
+    )
+    return await database.fetch_one("SELECT * FROM ATS_PIPELINE_ETAPAS WHERE id = ?", (stage_id,))
+
+@api_router.delete("/pipeline/stages/{stage_id}")
+async def delete_pipeline_stage(stage_id: str, user: dict = Depends(check_role([UserRole.ADMIN]))):
+    # No permitir borrar si tiene aplicaciones en esa etapa
+    stage = await database.fetch_one("SELECT code FROM ATS_PIPELINE_ETAPAS WHERE id = ?", (stage_id,))
+    if stage:
+        count = await database.fetch_val(
+            "SELECT COUNT(*) FROM ATS_APLICACIONES WHERE current_stage = ? AND tenant_id = ?",
+            (stage['code'], user['tenant_id'])
+        )
+        if count > 0:
+            raise HTTPException(status_code=400, detail=f"No se puede eliminar: hay {count} candidatos en esta etapa")
+    await database.execute(
+        "DELETE FROM ATS_PIPELINE_ETAPAS WHERE id = ? AND tenant_id = ? AND is_default = 0",
+        (stage_id, user['tenant_id'])
+    )
+    return {"message": "Etapa eliminada"}
+
+@api_router.put("/pipeline/stages/reorder")
+async def reorder_pipeline_stages(orders: List[dict], user: dict = Depends(check_role([UserRole.ADMIN]))):
+    """Recibe [{id, stage_order}] y actualiza el orden."""
+    ops = []
+    for item in orders:
+        ops.append((
+            "UPDATE ATS_PIPELINE_ETAPAS SET stage_order=? WHERE id=? AND tenant_id=?",
+            (item['stage_order'], item['id'], user['tenant_id'])
+        ))
+    await database.execute_transaction(ops)
+    return {"message": "Orden actualizado"}
+
 # ============ PIPELINE (Kanban) ============
 @api_router.get("/pipeline")
 async def get_pipeline(vacancy_id: Optional[str] = None, empresa_id: Optional[str] = None, user: dict = Depends(get_current_user)):
+    # Obtener etapas desde BD (con seed automático si no existen)
+    stages = await database.get_pipeline_stages(user['tenant_id'])
+    if not stages:
+        # Seed inicial si tabla vacía
+        default_stages = [
+            ("applied","Aplicado","#64748b",1),("pre_filter","Pre-filtro","#f59e0b",2),
+            ("interview_hr","Entrevista RR.HH.","#3b82f6",3),("interview_tech","Entrevista Técnica","#8b5cf6",4),
+            ("tests","Pruebas","#06b6d4",5),("finalist","Finalista","#10b981",6),
+            ("offer","Oferta","#f97316",7),("hired","Contratado","#22c55e",8),
+            ("rejected","Rechazado","#ef4444",9),
+        ]
+        ops = [("""INSERT INTO ATS_PIPELINE_ETAPAS (id, tenant_id, code, name, color, stage_order, is_active, is_default) VALUES (?, ?, ?, ?, ?, ?, 1, 1)""",
+                (str(uuid.uuid4()), user['tenant_id'], code, name, color, order))
+               for code, name, color, order in default_stages]
+        await database.execute_transaction(ops)
+        stages = await database.get_pipeline_stages(user['tenant_id'])
+
     pipeline_data = {}
-    for stage in PipelineStage:
+    for stage in stages:
+        stage_code = stage['code']
         where = "WHERE a.tenant_id = ? AND a.is_active = 1 AND a.current_stage = ?"
-        params = [user['tenant_id'], stage.value]
+        params = [user['tenant_id'], stage_code]
         if vacancy_id:
             where += " AND a.vacancy_id = ?"; params.append(vacancy_id)
         if empresa_id:
@@ -2193,7 +2297,7 @@ async def get_pipeline(vacancy_id: Optional[str] = None, empresa_id: Optional[st
                 (empresa_id, user['tenant_id'])
             )
             if not vac_ids:
-                pipeline_data[stage.value] = []
+                pipeline_data[stage_code] = []
                 continue
             vid_list = [v['id'] for v in vac_ids]
             where += f" AND a.vacancy_id IN ({','.join(['?']*len(vid_list))})"
@@ -2215,8 +2319,13 @@ async def get_pipeline(vacancy_id: Optional[str] = None, empresa_id: Optional[st
             d['vacancy_title'] = vac['title'] if vac else None
             d['empresa_name'] = empresa_name
             enriched.append(d)
-        pipeline_data[stage.value] = enriched
-    return pipeline_data
+        pipeline_data[stage_code] = enriched
+
+    # Incluir metadata de etapas para que el frontend las renderice en orden
+    return {
+        "stages": [{"code": s['code'], "name": s['name'], "color": s['color'], "id": s['id']} for s in stages],
+        "pipeline": pipeline_data
+    }
 
 # ============ REPORTS & METRICS ============
 @api_router.get("/reports/dashboard")
@@ -2539,6 +2648,21 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup():
     await database.init_pool()
+    # Crear tabla de etapas si no existe
+    await database.execute("""
+        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='ATS_PIPELINE_ETAPAS' AND xtype='U')
+        CREATE TABLE ATS_PIPELINE_ETAPAS (
+            id NVARCHAR(36) PRIMARY KEY,
+            tenant_id NVARCHAR(100) NOT NULL,
+            code NVARCHAR(50) NOT NULL,
+            name NVARCHAR(100) NOT NULL,
+            color NVARCHAR(20) DEFAULT '#64748b',
+            stage_order INT DEFAULT 99,
+            is_active BIT DEFAULT 1,
+            is_default BIT DEFAULT 0,
+            created_at DATETIME DEFAULT GETUTCDATE()
+        )
+    """)
     logger.info("Human Point ATS v2.0 — SQL Server ready")
 
 @app.on_event("shutdown")
