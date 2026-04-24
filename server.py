@@ -2641,6 +2641,12 @@ async def root():
     return {"message": "Human Point ATS API", "version": "2.0.0", "database": "SQL Server", "status": "running"}
 
 # ============ STARTUP / SHUTDOWN ============
+@api_router.get("/debug/routes")
+async def list_routes():
+    routes = [str(route.path) for route in app.routes]
+    pipeline_routes = [r for r in routes if 'pipeline' in r]
+    return {"pipeline_routes": pipeline_routes, "total": len(routes)}
+
 app.include_router(api_router)
 app.add_middleware(
     CORSMiddleware,
