@@ -53,7 +53,7 @@ const SortHeader = ({ label, field, sortKey, sortDir, onSort, className = "" }) 
 
 export const Offers = () => {
   const navigate = useNavigate();
-  const [offers, setOffers] = useState([]);
+  const [offers, setOffers] = useState([]);  // v2
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
