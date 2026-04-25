@@ -75,6 +75,7 @@ export const Candidates = () => {
   const [professionalLevels, setProfessionalLevels] = useState([]);
   const [professionalAreas, setProfessionalAreas] = useState([]);
   const [languages, setLanguages] = useState([]);
+  const [pipelineStageMap, setPipelineStageMap] = useState({});
   const [sortKey, setSortKey] = useState('created_at');
   const [sortDir, setSortDir] = useState('desc');
 
@@ -715,6 +716,7 @@ export const CandidateDetail = () => {
   const [professionalLevels, setProfessionalLevels] = useState([]);
   const [professionalAreas, setProfessionalAreas] = useState([]);
   const [languages, setLanguages] = useState([]);
+  const [pipelineStageMap, setPipelineStageMap] = useState({});
 
   // Interview history
   const [interviewHistory, setInterviewHistory] = useState([]);
@@ -768,14 +770,19 @@ export const CandidateDetail = () => {
 
   const loadCatalogs = async () => {
     try {
-      const [levels, areas, langs] = await Promise.all([
+      const [levels, areas, langs, stages] = await Promise.all([
         apiRequest('/catalogs/professional-levels'),
         apiRequest('/catalogs/professional-areas'),
-        apiRequest('/catalogs/languages')
+        apiRequest('/catalogs/languages'),
+        apiRequest('/pipeline/stages')
       ]);
       setProfessionalLevels(levels || []);
       setProfessionalAreas(areas || []);
       setLanguages(langs || []);
+      // Crear mapa code -> {label, color} para los badges de etapa
+      const map = {};
+      (stages || []).forEach(s => { map[s.code] = { label: s.name, color: 'bg-slate-100 text-slate-700', bgColor: s.color }; });
+      setPipelineStageMap(map);
     } catch (error) {
       console.error('Error loading catalogs:', error);
     }
@@ -1407,8 +1414,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;background:#fff;font-
                               <p className="text-xs text-slate-500 mt-0.5">{formatDate(app.created_at)}</p>
                             </div>
                           </div>
-                          <Badge className={PIPELINE_STAGES[app.current_stage]?.color}>
-                            {PIPELINE_STAGES[app.current_stage]?.label}
+                          <Badge className={(pipelineStageMap[app.current_stage] || PIPELINE_STAGES[app.current_stage])?.color || 'bg-slate-100 text-slate-700'}>
+                            {(pipelineStageMap[app.current_stage] || PIPELINE_STAGES[app.current_stage])?.label || app.current_stage}
                           </Badge>
                         </div>
                       ))}

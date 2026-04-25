@@ -2365,14 +2365,15 @@ async def get_dashboard(empresa_id: Optional[str] = None, user: dict = Depends(g
     pending_offers = await database.fetch_val(f"SELECT COUNT(*) FROM ATS_OFERTAS WHERE tenant_id = ? {empresa_filter} AND status = 'sent'", tuple(empresa_params_req))
     total_hires    = await database.fetch_val(f"SELECT COUNT(*) FROM ATS_CONTRATACIONES WHERE tenant_id = ? {empresa_filter}", tuple(empresa_params_req))
 
-    # Pipeline by stage
+    # Pipeline by stage - usando etapas de BD
+    db_stages = await database.get_pipeline_stages(tid)
     pipeline_stages = []
-    for stage in PipelineStage:
+    for stage in db_stages:
         if empresa_id and vid_list:
-            count = await database.fetch_val(f"SELECT COUNT(*) FROM ATS_APLICACIONES WHERE tenant_id = ? AND current_stage = ? AND is_active = 1 AND vacancy_id IN ({ph})", tuple([tid, stage.value] + vid_list))
+            count = await database.fetch_val(f"SELECT COUNT(*) FROM ATS_APLICACIONES WHERE tenant_id = ? AND current_stage = ? AND is_active = 1 AND vacancy_id IN ({ph})", tuple([tid, stage['code']] + vid_list))
         else:
-            count = await database.fetch_val("SELECT COUNT(*) FROM ATS_APLICACIONES WHERE tenant_id = ? AND current_stage = ? AND is_active = 1", (tid, stage.value))
-        pipeline_stages.append({"stage": stage.value, "count": count or 0})
+            count = await database.fetch_val("SELECT COUNT(*) FROM ATS_APLICACIONES WHERE tenant_id = ? AND current_stage = ? AND is_active = 1", (tid, stage['code']))
+        pipeline_stages.append({"stage": stage['code'], "count": count or 0})
 
     # Source breakdown (GROUP BY)
     source_rows = await database.fetch_all(
@@ -2422,26 +2423,29 @@ async def get_hiring_metrics(empresa_id: Optional[str] = None, user: dict = Depe
                 f"SELECT COUNT(*) FROM ATS_APLICACIONES WHERE tenant_id = ? AND vacancy_id IN ({ph})",
                 tuple([tid] + vid_list)
             )
+            db_stages = await database.get_pipeline_stages(tid)
             stage_data = []
-            for stage in PipelineStage:
+            for stage in db_stages:
                 count = await database.fetch_val(
                     f"SELECT COUNT(*) FROM ATS_APLICACIONES WHERE tenant_id = ? AND current_stage = ? AND vacancy_id IN ({ph})",
-                    tuple([tid, stage.value] + vid_list)
+                    tuple([tid, stage['code']] + vid_list)
                 )
-                stage_data.append({"stage": stage.value, "count": count or 0})
+                stage_data.append({"stage": stage['code'], "count": count or 0})
         else:
             # La empresa existe pero no tiene vacantes aún
             total_apps = 0
-            stage_data = [{"stage": s.value, "count": 0} for s in PipelineStage]
+            db_stages = await database.get_pipeline_stages(tid)
+            stage_data = [{"stage": s['code'], "count": 0} for s in db_stages]
     else:
         total_apps = await database.fetch_val("SELECT COUNT(*) FROM ATS_APLICACIONES WHERE tenant_id = ?", (tid,))
+        db_stages = await database.get_pipeline_stages(tid)
         stage_data = []
-        for stage in PipelineStage:
+        for stage in db_stages:
             count = await database.fetch_val(
                 "SELECT COUNT(*) FROM ATS_APLICACIONES WHERE tenant_id = ? AND current_stage = ?",
-                (tid, stage.value)
+                (tid, stage['code'])
             )
-            stage_data.append({"stage": stage.value, "count": count or 0})
+            stage_data.append({"stage": stage['code'], "count": count or 0})
 
     open_vac   = await database.fetch_val("SELECT COUNT(*) FROM ATS_VACANTES WHERE tenant_id = ? AND status = 'published'", (tid,))
     closed_vac = await database.fetch_val("SELECT COUNT(*) FROM ATS_VACANTES WHERE tenant_id = ? AND status = 'closed'", (tid,))
@@ -2641,12 +2645,6 @@ async def root():
     return {"message": "Human Point ATS API", "version": "2.0.0", "database": "SQL Server", "status": "running"}
 
 # ============ STARTUP / SHUTDOWN ============
-@api_router.get("/debug/routes")
-async def list_routes():
-    routes = [str(route.path) for route in app.routes]
-    pipeline_routes = [r for r in routes if 'pipeline' in r]
-    return {"pipeline_routes": pipeline_routes, "total": len(routes)}
-
 app.include_router(api_router)
 app.add_middleware(
     CORSMiddleware,
