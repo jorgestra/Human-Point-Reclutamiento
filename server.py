@@ -1489,6 +1489,27 @@ async def create_interview(data: InterviewCreate, user: dict = Depends(check_rol
     d['evaluators'] = await database.get_interview_evaluators(int_id)
     return d
 
+@api_router.get("/interviews/today")
+async def get_today_interviews(user: dict = Depends(get_current_user)):
+    """Entrevistas programadas para hoy — usado por la campana del Topbar."""
+    from datetime import datetime, timezone
+    today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+    rows = await database.fetch_all(
+        """SELECT e.id, e.scheduled_at, e.interview_type, e.location, e.status,
+                  c.first_name + ' ' + c.last_name AS candidate_name,
+                  v.title AS vacancy_title
+           FROM ATS_ENTREVISTAS e
+           LEFT JOIN ATS_APLICACIONES a ON a.id = e.application_id
+           LEFT JOIN ATS_CANDIDATOS c ON c.id = a.candidate_id
+           LEFT JOIN ATS_VACANTES v ON v.id = a.vacancy_id
+           WHERE e.tenant_id = ?
+             AND CAST(e.scheduled_at AS DATE) = CAST(GETUTCDATE() AS DATE)
+             AND e.status NOT IN ('cancelled', 'completed')
+           ORDER BY e.scheduled_at ASC""",
+        (user['tenant_id'],)
+    )
+    return [serialize_doc(r) for r in rows]
+
 @api_router.get("/interviews")
 async def list_interviews(
     status: Optional[str] = None, empresa_id: Optional[str] = None,
@@ -2323,6 +2344,38 @@ async def get_pipeline(vacancy_id: Optional[str] = None, empresa_id: Optional[st
             d['candidate'] = serialize_doc(cand)
             d['vacancy_title'] = vac['title'] if vac else None
             d['empresa_name'] = empresa_name
+
+            # Calcular días en la etapa actual
+            last_move = await database.fetch_one(
+                """SELECT TOP 1 moved_at FROM ATS_PIPELINE_HISTORIAL
+                   WHERE application_id = ? AND to_stage = ?
+                   ORDER BY moved_at DESC""",
+                (app['id'], stage_code)
+            )
+            if last_move and last_move.get('moved_at'):
+                from datetime import datetime, timezone
+                entered_at = last_move['moved_at']
+                if isinstance(entered_at, str):
+                    entered_at = datetime.fromisoformat(entered_at)
+                if entered_at.tzinfo is None:
+                    entered_at = entered_at.replace(tzinfo=timezone.utc)
+                days = (datetime.now(timezone.utc) - entered_at).days
+                d['days_in_stage'] = days
+                d['stage_entered_at'] = last_move['moved_at'].isoformat() if hasattr(last_move['moved_at'], 'isoformat') else str(last_move['moved_at'])
+            else:
+                # Si no hay historial, usar created_at de la aplicación
+                from datetime import datetime, timezone
+                created = app.get('created_at')
+                if created:
+                    if isinstance(created, str):
+                        created = datetime.fromisoformat(created)
+                    if hasattr(created, 'tzinfo') and created.tzinfo is None:
+                        created = created.replace(tzinfo=timezone.utc)
+                    d['days_in_stage'] = (datetime.now(timezone.utc) - created).days
+                else:
+                    d['days_in_stage'] = 0
+                d['stage_entered_at'] = None
+
             enriched.append(d)
         pipeline_data[stage_code] = enriched
 

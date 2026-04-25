@@ -19,7 +19,8 @@ import {
   MoreHorizontal,
   Eye,
   ArrowRight,
-  Filter
+  Filter,
+  Clock
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -290,11 +291,23 @@ export const Pipeline = () => {
                           <span className="text-xs text-slate-400">
                             {formatDate(app.created_at)}
                           </span>
-                          {app.score && (
-                            <Badge variant="outline" className="text-xs">
-                              Score: {app.score}
-                            </Badge>
-                          )}
+                          <div className="flex items-center gap-1.5">
+                            {app.days_in_stage !== undefined && (
+                              <span className={`inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded-full font-medium ${
+                                app.days_in_stage >= 14 ? 'bg-red-50 text-red-600' :
+                                app.days_in_stage >= 7  ? 'bg-yellow-50 text-yellow-600' :
+                                                          'bg-slate-50 text-slate-500'
+                              }`}>
+                                <Clock size={9} />
+                                {app.days_in_stage}d
+                              </span>
+                            )}
+                            {app.score && (
+                              <Badge variant="outline" className="text-xs">
+                                Score: {app.score}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
