@@ -773,14 +773,12 @@ export default function Settings() {
                     >
                       <Edit size={13} />
                     </Button>
-                    {!stage.is_default && (
-                      <Button
-                        variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-50"
-                        onClick={() => handleDeleteStage(stage)}
-                      >
-                        <Trash2 size={13} />
-                      </Button>
-                    )}
+                    <Button
+                      variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-50"
+                      onClick={() => handleDeleteStage(stage)}
+                    >
+                      <Trash2 size={13} />
+                    </Button>
                   </div>
                 </div>
               ))}
