@@ -5,7 +5,7 @@ export function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
-// v2.1`nexport const API_URL = `${process.env.REACT_APP_BACKEND_URL}/api`;
+export const API_URL = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 // Auth helpers
 export const getToken = () => localStorage.getItem('ats_token');
