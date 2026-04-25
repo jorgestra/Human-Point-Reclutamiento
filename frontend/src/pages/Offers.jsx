@@ -93,7 +93,6 @@ export const Offers = () => {
   const [formData, setFormData] = useState(initialFormState);
   const [editFormData, setEditFormData] = useState(editFormInitialState);
 
-  const loadOffers = React.
   const [sortKey, setSortKey] = useState('created_at');
   const [sortDir, setSortDir] = useState('desc');
 
@@ -119,7 +118,7 @@ export const Offers = () => {
     });
   };
 
-useCallback(async () => {
+  const loadOffers = React.useCallback(async () => {
     try {
       const endpoint = statusFilter !== 'all' 
         ? `/offers?status=${statusFilter}` 
