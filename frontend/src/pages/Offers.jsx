@@ -8,6 +8,7 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Avatar, AvatarFallback } from '../components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { toast } from 'sonner';
@@ -351,7 +352,19 @@ useCallback(async () => {
                   return (
                     <TableRow key={offer.id} className="hover:bg-slate-50" data-testid={`offer-row-${offer.id}`}>
                       <TableCell>
-                        <p className="font-medium text-slate-900">{offer.candidate_name}</p>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-8 w-8 flex-shrink-0">
+                            <AvatarFallback className="bg-slate-100 text-slate-600 text-xs font-medium">
+                              {offer.candidate_name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium text-slate-900 text-sm">{offer.candidate_name}</p>
+                            {offer.candidate_email && (
+                              <p className="text-xs text-slate-400 truncate max-w-[140px]">{offer.candidate_email}</p>
+                            )}
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <span className="text-sm text-slate-600">{offer.empresa_name || '-'}</span>

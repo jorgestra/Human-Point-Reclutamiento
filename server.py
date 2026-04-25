@@ -1771,9 +1771,10 @@ async def list_offers(
     result = []
     for r in rows:
         d = serialize_doc(r)
-        cand = await database.fetch_one("SELECT first_name, last_name FROM ATS_CANDIDATOS WHERE id = ?", (r['candidate_id'],))
+        cand = await database.fetch_one("SELECT first_name, last_name, email FROM ATS_CANDIDATOS WHERE id = ?", (r['candidate_id'],))
         if cand:
             d['candidate_name'] = f"{cand['first_name']} {cand['last_name']}"
+            d['candidate_email'] = cand.get('email')
         vac = await database.fetch_one("SELECT title, empresa_id FROM ATS_VACANTES WHERE id = ?", (r['vacancy_id'],))
         if vac:
             d['vacancy_title'] = vac['title']
