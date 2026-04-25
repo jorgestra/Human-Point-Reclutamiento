@@ -2263,7 +2263,7 @@ async def delete_pipeline_stage(stage_id: str, user: dict = Depends(check_role([
         if count > 0:
             raise HTTPException(status_code=400, detail=f"No se puede eliminar: hay {count} candidatos en esta etapa")
     await database.execute(
-        "DELETE FROM ATS_PIPELINE_ETAPAS WHERE id = ? AND tenant_id = ? AND is_default = 0",
+        "DELETE FROM ATS_PIPELINE_ETAPAS WHERE id = ? AND tenant_id = ?",
         (stage_id, user['tenant_id'])
     )
     return {"message": "Etapa eliminada"}
