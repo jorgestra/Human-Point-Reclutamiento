@@ -2194,15 +2194,13 @@ async def list_pipeline_stages(user: dict = Depends(get_current_user)):
     if not stages:
         # Seed con etapas por defecto basadas en el enum actual
         default_stages = [
-            ("applied",       "Aplicado",         "#64748b", 1),
-            ("pre_filter",    "Pre-filtro",        "#f59e0b", 2),
-            ("interview_hr",  "Entrevista RR.HH.", "#3b82f6", 3),
-            ("interview_tech","Entrevista Técnica","#8b5cf6", 4),
-            ("tests",         "Pruebas",           "#06b6d4", 5),
-            ("finalist",      "Finalista",         "#10b981", 6),
-            ("offer",         "Oferta",            "#f97316", 7),
-            ("hired",         "Contratado",        "#22c55e", 8),
-            ("rejected",      "Rechazado",         "#ef4444", 9),
+            ("applied",           "Aplicado",                "#64748b", 1),
+            ("interview_hr",      "Entrevista RR.HH.",       "#3b82f6", 2),
+            ("interview_client",  "Entrevista con Cliente",  "#8b5cf6", 3),
+            ("finalist",          "Finalista",               "#10b981", 4),
+            ("offer",             "Oferta",                  "#f97316", 5),
+            ("hired",             "Contratado",              "#22c55e", 6),
+            ("rejected",          "Rechazado",               "#ef4444", 7),
         ]
         ops = []
         for code, name, color, order in default_stages:
@@ -2277,11 +2275,13 @@ async def get_pipeline(vacancy_id: Optional[str] = None, empresa_id: Optional[st
     if not stages:
         # Seed inicial si tabla vacía
         default_stages = [
-            ("applied","Aplicado","#64748b",1),("pre_filter","Pre-filtro","#f59e0b",2),
-            ("interview_hr","Entrevista RR.HH.","#3b82f6",3),("interview_tech","Entrevista Técnica","#8b5cf6",4),
-            ("tests","Pruebas","#06b6d4",5),("finalist","Finalista","#10b981",6),
-            ("offer","Oferta","#f97316",7),("hired","Contratado","#22c55e",8),
-            ("rejected","Rechazado","#ef4444",9),
+            ("applied","Aplicado","#64748b",1),
+            ("interview_hr","Entrevista RR.HH.","#3b82f6",2),
+            ("interview_client","Entrevista con Cliente","#8b5cf6",3),
+            ("finalist","Finalista","#10b981",4),
+            ("offer","Oferta","#f97316",5),
+            ("hired","Contratado","#22c55e",6),
+            ("rejected","Rechazado","#ef4444",7),
         ]
         ops = [("""INSERT INTO ATS_PIPELINE_ETAPAS (id, tenant_id, code, name, color, stage_order, is_active, is_default) VALUES (?, ?, ?, ?, ?, ?, 1, 1)""",
                 (str(uuid.uuid4()), user['tenant_id'], code, name, color, order))
