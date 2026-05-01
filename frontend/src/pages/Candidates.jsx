@@ -1020,6 +1020,7 @@ export const CandidateDetail = () => {
       last_name: candidate.last_name,
       email: candidate.email,
       phone: candidate.phone || '',
+      dpi: candidate.dpi || '',
       linkedin_url: candidate.linkedin_url || '',
       portfolio_url: candidate.portfolio_url || '',
       location: candidate.location || '',
@@ -1585,6 +1586,11 @@ body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;background:#fff;font-
                           </p>
                           {exp.description && (
                             <p className="text-sm text-slate-500 mt-2">{exp.description}</p>
+                          )}
+                          {exp.departure_reason && (
+                            <p className="text-xs text-amber-700 mt-1.5 bg-amber-50 px-2 py-1 rounded border border-amber-100">
+                              <strong>Motivo de salida:</strong> {exp.departure_reason}
+                            </p>
                           )}
                         </div>
                       ))}

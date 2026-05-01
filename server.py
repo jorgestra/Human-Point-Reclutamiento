@@ -1130,6 +1130,55 @@ async def upload_candidate_cv(candidate_id: str, file: UploadFile = File(...), u
     )
     return {"message": "CV subido", "file_id": file_id, "url": file_url}
 
+# ============ REFERENCIAS DEL CANDIDATO ============
+
+class ReferenceCreate(BaseModel):
+    reference_type: str = "professional"  # personal, professional
+    company: Optional[str] = None
+    name: str
+    phone: Optional[str] = None
+    email: Optional[str] = None
+
+@api_router.get("/candidates/{candidate_id}/references")
+async def list_references(candidate_id: str, user: dict = Depends(get_current_user)):
+    rows = await database.fetch_all(
+        "SELECT * FROM ATS_CANDIDATOS_REFERENCIAS WHERE candidate_id = ? ORDER BY created_at",
+        (candidate_id,)
+    )
+    return [serialize_doc(r) for r in rows]
+
+@api_router.post("/candidates/{candidate_id}/references")
+async def add_reference(candidate_id: str, ref: ReferenceCreate, user: dict = Depends(check_role([UserRole.ADMIN, UserRole.RECRUITER]))):
+    cand = await database.fetch_one("SELECT id FROM ATS_CANDIDATOS WHERE id = ? AND tenant_id = ?", (candidate_id, user['tenant_id']))
+    if not cand:
+        raise HTTPException(status_code=404, detail="Candidato no encontrado")
+    ref_id = str(uuid.uuid4())
+    await database.execute(
+        """INSERT INTO ATS_CANDIDATOS_REFERENCIAS (id, candidate_id, reference_type, company, name, phone, email, created_by)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        (ref_id, candidate_id, ref.reference_type, ref.company, ref.name, ref.phone, ref.email, user['id'])
+    )
+    return {"message": "Referencia agregada", "reference_id": ref_id}
+
+@api_router.put("/candidates/{candidate_id}/references/{ref_id}")
+async def update_reference(candidate_id: str, ref_id: str, ref: ReferenceCreate, user: dict = Depends(check_role([UserRole.ADMIN, UserRole.RECRUITER]))):
+    await database.execute(
+        """UPDATE ATS_CANDIDATOS_REFERENCIAS SET reference_type=?, company=?, name=?, phone=?, email=?
+           WHERE id = ? AND candidate_id = ?""",
+        (ref.reference_type, ref.company, ref.name, ref.phone, ref.email, ref_id, candidate_id)
+    )
+    return {"message": "Referencia actualizada"}
+
+@api_router.delete("/candidates/{candidate_id}/references/{ref_id}")
+async def delete_reference(candidate_id: str, ref_id: str, user: dict = Depends(check_role([UserRole.ADMIN, UserRole.RECRUITER]))):
+    await database.execute(
+        "DELETE FROM ATS_CANDIDATOS_REFERENCIAS WHERE id = ? AND candidate_id = ?",
+        (ref_id, candidate_id)
+    )
+    return {"message": "Referencia eliminada"}
+
+
+
 @api_router.get("/candidates/{candidate_id}/files/{file_id}")
 async def get_candidate_file(candidate_id: str, file_id: str):
     upload_dir = ROOT_DIR / "uploads" / "candidates"
@@ -2202,53 +2251,6 @@ async def get_currencies():
         {"code": "MXN", "name": "Peso Mexicano", "symbol": "$"},
     ]
 
-
-# ============ REFERENCIAS DEL CANDIDATO ============
-
-class ReferenceCreate(BaseModel):
-    reference_type: str = "professional"  # personal, professional
-    company: Optional[str] = None
-    name: str
-    phone: Optional[str] = None
-    email: Optional[str] = None
-
-@api_router.get("/candidates/{candidate_id}/references")
-async def list_references(candidate_id: str, user: dict = Depends(get_current_user)):
-    rows = await database.fetch_all(
-        "SELECT * FROM ATS_CANDIDATOS_REFERENCIAS WHERE candidate_id = ? ORDER BY created_at",
-        (candidate_id,)
-    )
-    return [serialize_doc(r) for r in rows]
-
-@api_router.post("/candidates/{candidate_id}/references")
-async def add_reference(candidate_id: str, ref: ReferenceCreate, user: dict = Depends(check_role([UserRole.ADMIN, UserRole.RECRUITER]))):
-    cand = await database.fetch_one("SELECT id FROM ATS_CANDIDATOS WHERE id = ? AND tenant_id = ?", (candidate_id, user['tenant_id']))
-    if not cand:
-        raise HTTPException(status_code=404, detail="Candidato no encontrado")
-    ref_id = str(uuid.uuid4())
-    await database.execute(
-        """INSERT INTO ATS_CANDIDATOS_REFERENCIAS (id, candidate_id, reference_type, company, name, phone, email, created_by)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-        (ref_id, candidate_id, ref.reference_type, ref.company, ref.name, ref.phone, ref.email, user['id'])
-    )
-    return {"message": "Referencia agregada", "reference_id": ref_id}
-
-@api_router.put("/candidates/{candidate_id}/references/{ref_id}")
-async def update_reference(candidate_id: str, ref_id: str, ref: ReferenceCreate, user: dict = Depends(check_role([UserRole.ADMIN, UserRole.RECRUITER]))):
-    await database.execute(
-        """UPDATE ATS_CANDIDATOS_REFERENCIAS SET reference_type=?, company=?, name=?, phone=?, email=?
-           WHERE id = ? AND candidate_id = ?""",
-        (ref.reference_type, ref.company, ref.name, ref.phone, ref.email, ref_id, candidate_id)
-    )
-    return {"message": "Referencia actualizada"}
-
-@api_router.delete("/candidates/{candidate_id}/references/{ref_id}")
-async def delete_reference(candidate_id: str, ref_id: str, user: dict = Depends(check_role([UserRole.ADMIN, UserRole.RECRUITER]))):
-    await database.execute(
-        "DELETE FROM ATS_CANDIDATOS_REFERENCIAS WHERE id = ? AND candidate_id = ?",
-        (ref_id, candidate_id)
-    )
-    return {"message": "Referencia eliminada"}
 
 # ============ PIPELINE STAGES (configurables) ============
 
