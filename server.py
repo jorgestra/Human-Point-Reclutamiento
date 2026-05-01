@@ -1540,27 +1540,6 @@ async def create_interview(data: InterviewCreate, user: dict = Depends(check_rol
     d['evaluators'] = await database.get_interview_evaluators(int_id)
     return d
 
-@api_router.get("/interviews/today")
-async def get_today_interviews(user: dict = Depends(get_current_user)):
-    """Entrevistas programadas para hoy — usado por la campana del Topbar."""
-    from datetime import datetime, timezone
-    today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
-    rows = await database.fetch_all(
-        """SELECT e.id, e.scheduled_at, e.interview_type, e.location, e.status,
-                  c.first_name + ' ' + c.last_name AS candidate_name,
-                  v.title AS vacancy_title
-           FROM ATS_ENTREVISTAS e
-           LEFT JOIN ATS_APLICACIONES a ON a.id = e.application_id
-           LEFT JOIN ATS_CANDIDATOS c ON c.id = a.candidate_id
-           LEFT JOIN ATS_VACANTES v ON v.id = a.vacancy_id
-           WHERE e.tenant_id = ?
-             AND CAST(e.scheduled_at AS DATE) = CAST(GETUTCDATE() AS DATE)
-             AND e.status NOT IN ('cancelled', 'completed')
-           ORDER BY e.scheduled_at ASC""",
-        (user['tenant_id'],)
-    )
-    return [serialize_doc(r) for r in rows]
-
 @api_router.get("/interviews")
 async def list_interviews(
     status: Optional[str] = None, empresa_id: Optional[str] = None,
@@ -1611,6 +1590,25 @@ async def list_interviews(
         d['evaluators'] = await database.get_interview_evaluators(d['id'])
         result.append(d)
     return result
+
+@api_router.get("/interviews/today")
+async def get_today_interviews(user: dict = Depends(get_current_user)):
+    """Entrevistas programadas para hoy — usado por la campana del Topbar."""
+    rows = await database.fetch_all(
+        """SELECT e.id, e.scheduled_at, e.interview_type, e.location, e.status,
+                  c.first_name + ' ' + c.last_name AS candidate_name,
+                  v.title AS vacancy_title
+           FROM ATS_ENTREVISTAS e
+           LEFT JOIN ATS_APLICACIONES a ON a.id = e.application_id
+           LEFT JOIN ATS_CANDIDATOS c ON c.id = a.candidate_id
+           LEFT JOIN ATS_VACANTES v ON v.id = a.vacancy_id
+           WHERE e.tenant_id = ?
+             AND CAST(e.scheduled_at AS DATE) = CAST(GETUTCDATE() AS DATE)
+             AND e.status NOT IN ('cancelled', 'completed')
+           ORDER BY e.scheduled_at ASC""",
+        (user['tenant_id'],)
+    )
+    return [serialize_doc(r) for r in rows]
 
 @api_router.get("/interviews/{interview_id}")
 async def get_interview(interview_id: str, user: dict = Depends(get_current_user)):
