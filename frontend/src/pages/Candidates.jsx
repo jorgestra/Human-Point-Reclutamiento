@@ -93,6 +93,7 @@ export const Candidates = () => {
     last_name: '',
     email: '',
     phone: '',
+    dpi: '',
     linkedin_url: '',
     portfolio_url: '',
     location: '',
@@ -451,6 +452,10 @@ export const Candidates = () => {
                   <Input value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} data-testid="candidate-phone-input" />
                 </div>
                 <div className="space-y-2">
+                  <Label>DPI</Label>
+                  <Input value={formData.dpi} onChange={(e) => setFormData({ ...formData, dpi: e.target.value })} placeholder="0000 00000 0000" data-testid="candidate-dpi-input" />
+                </div>
+                <div className="space-y-2">
                   <Label>Ubicación</Label>
                   <Input value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })} data-testid="candidate-location-input" />
                 </div>
@@ -622,6 +627,12 @@ export const Candidates = () => {
                   </div>
                   <div className="flex items-center gap-2 text-sm"><input type="checkbox" checked={newExp.is_current} onChange={e => setNewExp({ ...newExp, is_current: e.target.checked, end_date: '' })} className="rounded" /><span className="text-slate-600">Trabajo actual</span></div>
                   <Textarea value={newExp.description} onChange={e => setNewExp({ ...newExp, description: e.target.value })} rows={2} placeholder="Descripción..." />
+                  {!newExp.is_current && (
+                    <div className="space-y-1">
+                      <Label className="text-xs">¿Por qué salió?</Label>
+                      <Input value={newExp.departure_reason || ''} onChange={e => setNewExp({ ...newExp, departure_reason: e.target.value })} placeholder="Motivo de salida..." />
+                    </div>
+                  )}
                   <Button type="button" variant="outline" size="sm" onClick={() => {
                     if (!newExp.company || !newExp.position) return;
                     setFormData({ ...formData, experience: [...formData.experience, { ...newExp }] });
@@ -681,6 +692,10 @@ export const CandidateDetail = () => {
   const [editFormData, setEditFormData] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [selectedDocType, setSelectedDocType] = useState('cv');
+  const [references, setReferences] = useState([]);
+  const [showRefForm, setShowRefForm] = useState(false);
+  const [editingRef, setEditingRef] = useState(null);
+  const [refForm, setRefForm] = useState({ reference_type: 'professional', company: '', name: '', phone: '', email: '' });
   
   // Experience CRUD states
   const [showExpDialog, setShowExpDialog] = useState(false);
@@ -800,9 +815,50 @@ export const CandidateDetail = () => {
     }
   };
 
+  const loadReferences = async () => {
+    try {
+      const data = await apiRequest(`/candidates/${id}/references`);
+      setReferences(data || []);
+    } catch {}
+  };
+
+  const handleSaveRef = async () => {
+    try {
+      if (editingRef) {
+        await apiRequest(`/candidates/${id}/references/${editingRef.id}`, {
+          method: 'PUT', body: JSON.stringify(refForm)
+        });
+        toast.success('Referencia actualizada');
+      } else {
+        await apiRequest(`/candidates/${id}/references`, {
+          method: 'POST', body: JSON.stringify(refForm)
+        });
+        toast.success('Referencia agregada');
+      }
+      setShowRefForm(false);
+      setEditingRef(null);
+      setRefForm({ reference_type: 'professional', company: '', name: '', phone: '', email: '' });
+      loadReferences();
+    } catch (err) {
+      toast.error(err.message || 'Error al guardar referencia');
+    }
+  };
+
+  const handleDeleteRef = async (refId) => {
+    if (!window.confirm('¿Eliminar esta referencia?')) return;
+    try {
+      await apiRequest(`/candidates/${id}/references/${refId}`, { method: 'DELETE' });
+      toast.success('Referencia eliminada');
+      loadReferences();
+    } catch {
+      toast.error('Error al eliminar referencia');
+    }
+  };
+
   useEffect(() => {
     loadCandidate();
     loadInterviewHistory();
+    loadReferences();
   }, [loadCandidate]);
 
   // Experience handlers
@@ -1359,6 +1415,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;background:#fff;font-
               <TabsTrigger value="interviews">Entrevistas</TabsTrigger>
               <TabsTrigger value="experience">Experiencia</TabsTrigger>
               <TabsTrigger value="education">Educación</TabsTrigger>
+              <TabsTrigger value="references">Referencias</TabsTrigger>
               <TabsTrigger value="documents">Documentos</TabsTrigger>
               <TabsTrigger value="notes">Notas</TabsTrigger>
             </TabsList>
@@ -1597,6 +1654,95 @@ body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;background:#fff;font-
               </Card>
             </TabsContent>
 
+            {/* Referencias */}
+            <TabsContent value="references" className="mt-4">
+              <Card className="border-slate-200">
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle className="text-lg">Referencias</CardTitle>
+                  <Button size="sm" className="bg-slate-900 hover:bg-slate-800"
+                    onClick={() => { setEditingRef(null); setRefForm({ reference_type: 'professional', company: '', name: '', phone: '', email: '' }); setShowRefForm(true); }}>
+                    <Plus size={14} className="mr-1.5" /> Agregar
+                  </Button>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {showRefForm && (
+                    <div className="border border-cyan-200 bg-cyan-50/30 rounded-lg p-4 space-y-3">
+                      <h4 className="text-sm font-medium text-slate-700">{editingRef ? 'Editar Referencia' : 'Nueva Referencia'}</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Tipo</Label>
+                          <select value={refForm.reference_type} onChange={e => setRefForm({ ...refForm, reference_type: e.target.value })}
+                            className="w-full border border-slate-200 rounded-md px-2 py-1.5 text-sm outline-none">
+                            <option value="professional">Profesional</option>
+                            <option value="personal">Personal</option>
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Empresa</Label>
+                          <Input value={refForm.company} onChange={e => setRefForm({ ...refForm, company: e.target.value })} placeholder="Empresa..." className="h-8 text-sm" />
+                        </div>
+                        <div className="col-span-2 space-y-1">
+                          <Label className="text-xs">Nombre *</Label>
+                          <Input value={refForm.name} onChange={e => setRefForm({ ...refForm, name: e.target.value })} placeholder="Nombre completo..." className="h-8 text-sm" />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Teléfono</Label>
+                          <Input value={refForm.phone} onChange={e => setRefForm({ ...refForm, phone: e.target.value })} placeholder="Teléfono..." className="h-8 text-sm" />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Correo</Label>
+                          <Input value={refForm.email} onChange={e => setRefForm({ ...refForm, email: e.target.value })} placeholder="correo@..." className="h-8 text-sm" />
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" className="bg-slate-900 hover:bg-slate-800" onClick={handleSaveRef} disabled={!refForm.name}>
+                          Guardar
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => { setShowRefForm(false); setEditingRef(null); }}>
+                          Cancelar
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  {references.length === 0 && !showRefForm ? (
+                    <div className="text-center py-8 text-slate-400">
+                      <p className="text-sm">Sin referencias registradas</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {references.map(ref => (
+                        <div key={ref.id} className="flex items-start justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-sm text-slate-900">{ref.name}</span>
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${ref.reference_type === 'professional' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'}`}>
+                                {ref.reference_type === 'professional' ? 'Profesional' : 'Personal'}
+                              </span>
+                            </div>
+                            {ref.company && <p className="text-xs text-slate-500">{ref.company}</p>}
+                            <div className="flex gap-3 text-xs text-slate-400">
+                              {ref.phone && <span>{ref.phone}</span>}
+                              {ref.email && <span>{ref.email}</span>}
+                            </div>
+                          </div>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="icon" className="h-7 w-7"
+                              onClick={() => { setEditingRef(ref); setRefForm({ reference_type: ref.reference_type, company: ref.company || '', name: ref.name, phone: ref.phone || '', email: ref.email || '' }); setShowRefForm(true); }}>
+                              <Edit size={13} />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-50"
+                              onClick={() => handleDeleteRef(ref.id)}>
+                              <Trash2 size={13} />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
             <TabsContent value="documents" className="mt-4">
               <Card className="border-slate-200">
                 <CardHeader className="flex flex-row items-center justify-between">
@@ -1756,6 +1902,15 @@ body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;background:#fff;font-
                     value={editFormData.phone}
                     onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
                     data-testid="edit-phone-input"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>DPI</Label>
+                  <Input
+                    value={editFormData.dpi || ''}
+                    onChange={(e) => setEditFormData({ ...editFormData, dpi: e.target.value })}
+                    placeholder="0000 00000 0000"
+                    data-testid="edit-dpi-input"
                   />
                 </div>
                 <div className="space-y-2">

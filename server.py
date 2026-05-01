@@ -238,12 +238,14 @@ class Experience(BaseModel):
     start_date: Optional[str] = None
     end_date: Optional[str] = None
     is_current: bool = False
+    departure_reason: Optional[str] = None
 
 class CandidateCreate(BaseModel):
     first_name: str
     last_name: str
     email: EmailStr
     phone: Optional[str] = None
+    dpi: Optional[str] = None
     linkedin_url: Optional[str] = None
     portfolio_url: Optional[str] = None
     location: Optional[str] = None
@@ -888,12 +890,12 @@ async def create_candidate(data: CandidateCreate, user: dict = Depends(check_rol
     cid = str(uuid.uuid4())
     await database.execute(
         """INSERT INTO ATS_CANDIDATOS
-           (id, tenant_id, first_name, last_name, email, phone, linkedin_url, portfolio_url,
+           (id, tenant_id, first_name, last_name, email, phone, dpi, linkedin_url, portfolio_url,
             location, expected_salary, salary_currency, source, notes, candidate_status,
             disqualification_reason, experience_range, professional_level_id, created_by)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (cid, user['tenant_id'], data.first_name, data.last_name, data.email,
-         data.phone, data.linkedin_url, data.portfolio_url, data.location,
+         data.phone, data.dpi, data.linkedin_url, data.portfolio_url, data.location,
          data.expected_salary, data.salary_currency, data.source, data.notes,
          data.candidate_status, data.disqualification_reason, data.experience_range,
          data.professional_level_id, user['id'])
@@ -914,9 +916,9 @@ async def create_candidate(data: CandidateCreate, user: dict = Depends(check_rol
     for exp in data.experience:
         ex = exp.model_dump()
         await database.execute(
-            """INSERT INTO ATS_CANDIDATOS_EXPERIENCIA (id, candidate_id, company, position, description, start_date, end_date, is_current)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            (ex.get('id', str(uuid.uuid4())), cid, ex['company'], ex['position'], ex.get('description'), ex.get('start_date'), ex.get('end_date'), 1 if ex.get('is_current') else 0)
+            """INSERT INTO ATS_CANDIDATOS_EXPERIENCIA (id, candidate_id, company, position, description, start_date, end_date, is_current, departure_reason)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (ex.get('id', str(uuid.uuid4())), cid, ex['company'], ex['position'], ex.get('description'), ex.get('start_date'), ex.get('end_date'), 1 if ex.get('is_current') else 0, ex.get('departure_reason'))
         )
     row = await database.fetch_one("SELECT * FROM ATS_CANDIDATOS WHERE id = ?", (cid,))
     return serialize_doc(row)
@@ -1079,11 +1081,11 @@ async def update_candidate(candidate_id: str, data: CandidateCreate, user: dict 
     if not row:
         raise HTTPException(status_code=404, detail="Candidato no encontrado")
     await database.execute(
-        """UPDATE ATS_CANDIDATOS SET first_name=?, last_name=?, email=?, phone=?, linkedin_url=?,
+        """UPDATE ATS_CANDIDATOS SET first_name=?, last_name=?, email=?, phone=?, dpi=?, linkedin_url=?,
            portfolio_url=?, location=?, expected_salary=?, salary_currency=?, source=?, notes=?,
            candidate_status=?, disqualification_reason=?, experience_range=?, professional_level_id=?,
            updated_at=GETUTCDATE(), updated_by=? WHERE id = ? AND tenant_id = ?""",
-        (data.first_name, data.last_name, data.email, data.phone, data.linkedin_url,
+        (data.first_name, data.last_name, data.email, data.phone, data.dpi, data.linkedin_url,
          data.portfolio_url, data.location, data.expected_salary, data.salary_currency,
          data.source, data.notes, data.candidate_status, data.disqualification_reason,
          data.experience_range, data.professional_level_id, user['id'], candidate_id, user['tenant_id'])
@@ -1210,18 +1212,18 @@ async def add_experience(candidate_id: str, exp: Experience, user: dict = Depend
         raise HTTPException(status_code=404, detail="Candidato no encontrado")
     exp_id = exp.id or str(uuid.uuid4())
     await database.execute(
-        """INSERT INTO ATS_CANDIDATOS_EXPERIENCIA (id, candidate_id, company, position, description, start_date, end_date, is_current)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-        (exp_id, candidate_id, exp.company, exp.position, exp.description, exp.start_date, exp.end_date, 1 if exp.is_current else 0)
+        """INSERT INTO ATS_CANDIDATOS_EXPERIENCIA (id, candidate_id, company, position, description, start_date, end_date, is_current, departure_reason)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (exp_id, candidate_id, exp.company, exp.position, exp.description, exp.start_date, exp.end_date, 1 if exp.is_current else 0, exp.departure_reason)
     )
     return {"message": "Experiencia agregada", "experience_id": exp_id}
 
 @api_router.put("/candidates/{candidate_id}/experience/{exp_id}")
 async def update_experience(candidate_id: str, exp_id: str, exp: Experience, user: dict = Depends(check_role([UserRole.ADMIN, UserRole.RECRUITER]))):
     await database.execute(
-        """UPDATE ATS_CANDIDATOS_EXPERIENCIA SET company=?, position=?, description=?, start_date=?, end_date=?, is_current=?
+        """UPDATE ATS_CANDIDATOS_EXPERIENCIA SET company=?, position=?, description=?, start_date=?, end_date=?, is_current=?, departure_reason=?
            WHERE id = ? AND candidate_id = ?""",
-        (exp.company, exp.position, exp.description, exp.start_date, exp.end_date, 1 if exp.is_current else 0, exp_id, candidate_id)
+        (exp.company, exp.position, exp.description, exp.start_date, exp.end_date, 1 if exp.is_current else 0, exp.departure_reason, exp_id, candidate_id)
     )
     return {"message": "Experiencia actualizada"}
 
@@ -2200,6 +2202,54 @@ async def get_currencies():
         {"code": "MXN", "name": "Peso Mexicano", "symbol": "$"},
     ]
 
+
+# ============ REFERENCIAS DEL CANDIDATO ============
+
+class ReferenceCreate(BaseModel):
+    reference_type: str = "professional"  # personal, professional
+    company: Optional[str] = None
+    name: str
+    phone: Optional[str] = None
+    email: Optional[str] = None
+
+@api_router.get("/candidates/{candidate_id}/references")
+async def list_references(candidate_id: str, user: dict = Depends(get_current_user)):
+    rows = await database.fetch_all(
+        "SELECT * FROM ATS_CANDIDATOS_REFERENCIAS WHERE candidate_id = ? ORDER BY created_at",
+        (candidate_id,)
+    )
+    return [serialize_doc(r) for r in rows]
+
+@api_router.post("/candidates/{candidate_id}/references")
+async def add_reference(candidate_id: str, ref: ReferenceCreate, user: dict = Depends(check_role([UserRole.ADMIN, UserRole.RECRUITER]))):
+    cand = await database.fetch_one("SELECT id FROM ATS_CANDIDATOS WHERE id = ? AND tenant_id = ?", (candidate_id, user['tenant_id']))
+    if not cand:
+        raise HTTPException(status_code=404, detail="Candidato no encontrado")
+    ref_id = str(uuid.uuid4())
+    await database.execute(
+        """INSERT INTO ATS_CANDIDATOS_REFERENCIAS (id, candidate_id, reference_type, company, name, phone, email, created_by)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        (ref_id, candidate_id, ref.reference_type, ref.company, ref.name, ref.phone, ref.email, user['id'])
+    )
+    return {"message": "Referencia agregada", "reference_id": ref_id}
+
+@api_router.put("/candidates/{candidate_id}/references/{ref_id}")
+async def update_reference(candidate_id: str, ref_id: str, ref: ReferenceCreate, user: dict = Depends(check_role([UserRole.ADMIN, UserRole.RECRUITER]))):
+    await database.execute(
+        """UPDATE ATS_CANDIDATOS_REFERENCIAS SET reference_type=?, company=?, name=?, phone=?, email=?
+           WHERE id = ? AND candidate_id = ?""",
+        (ref.reference_type, ref.company, ref.name, ref.phone, ref.email, ref_id, candidate_id)
+    )
+    return {"message": "Referencia actualizada"}
+
+@api_router.delete("/candidates/{candidate_id}/references/{ref_id}")
+async def delete_reference(candidate_id: str, ref_id: str, user: dict = Depends(check_role([UserRole.ADMIN, UserRole.RECRUITER]))):
+    await database.execute(
+        "DELETE FROM ATS_CANDIDATOS_REFERENCIAS WHERE id = ? AND candidate_id = ?",
+        (ref_id, candidate_id)
+    )
+    return {"message": "Referencia eliminada"}
+
 # ============ PIPELINE STAGES (configurables) ============
 
 class PipelineStageCreate(BaseModel):
@@ -2725,6 +2775,31 @@ async def startup():
             is_default BIT DEFAULT 0,
             created_at DATETIME DEFAULT GETUTCDATE()
         )
+    """)
+    # Crear tabla de referencias si no existe
+    await database.execute("""
+        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='ATS_CANDIDATOS_REFERENCIAS' AND xtype='U')
+        CREATE TABLE ATS_CANDIDATOS_REFERENCIAS (
+            id NVARCHAR(36) PRIMARY KEY,
+            candidate_id NVARCHAR(36) NOT NULL,
+            reference_type NVARCHAR(20) DEFAULT 'professional',
+            company NVARCHAR(200),
+            name NVARCHAR(200) NOT NULL,
+            phone NVARCHAR(50),
+            email NVARCHAR(200),
+            created_by NVARCHAR(36),
+            created_at DATETIME DEFAULT GETUTCDATE()
+        )
+    """)
+    # Agregar columna DPI a candidatos si no existe
+    await database.execute("""
+        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ATS_CANDIDATOS') AND name = 'dpi')
+        ALTER TABLE ATS_CANDIDATOS ADD dpi NVARCHAR(20)
+    """)
+    # Agregar columna departure_reason a experiencia si no existe
+    await database.execute("""
+        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ATS_CANDIDATOS_EXPERIENCIA') AND name = 'departure_reason')
+        ALTER TABLE ATS_CANDIDATOS_EXPERIENCIA ADD departure_reason NVARCHAR(500)
     """)
     logger.info("Human Point ATS v2.0 — SQL Server ready")
 
