@@ -2424,7 +2424,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;background:#fff;font-
                 <SelectContent>
                   {hrPersonnel.map(p => (
                     <SelectItem key={p.id} value={p.id}>
-                      {p.first_name} {p.last_name} {p.position ? `— ${p.position}` : ''}
+                      {p.first_name ? `${p.first_name} ${p.last_name}` : p.name} {p.position ? `— ${p.position}` : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>
