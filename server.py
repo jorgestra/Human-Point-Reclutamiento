@@ -2525,16 +2525,6 @@ async def get_dashboard(empresa_id: Optional[str] = None, user: dict = Depends(g
 
     open_req   = await database.fetch_val(f"SELECT COUNT(*) FROM ATS_REQUISICIONES WHERE tenant_id = ? {empresa_filter} AND status IN ('draft','pending_approval','approved')", tuple(empresa_params_req))
     open_vac   = await database.fetch_val(f"SELECT COUNT(*) FROM ATS_VACANTES WHERE tenant_id = ? {empresa_filter} AND status = 'published'", tuple(empresa_params_req))
-    if empresa_id and vid_list:
-        total_cand = await database.fetch_val(
-            f"SELECT COUNT(DISTINCT candidate_id) FROM ATS_APLICACIONES WHERE tenant_id = ? AND vacancy_id IN ({ph})",
-            tuple([tid] + vid_list)
-        )
-    elif empresa_id and not vid_list:
-        total_cand = 0
-    else:
-        total_cand = await database.fetch_val("SELECT COUNT(*) FROM ATS_CANDIDATOS WHERE tenant_id = ?", (tid,))
-
     # Inicializar vid_list y ph para uso posterior (pipeline_stages, recent)
     vid_list: list = []
     ph: str = "''"
@@ -2550,6 +2540,17 @@ async def get_dashboard(empresa_id: Optional[str] = None, user: dict = Depends(g
     else:
         active_apps = await database.fetch_val("SELECT COUNT(*) FROM ATS_APLICACIONES WHERE tenant_id = ? AND is_active = 1", (tid,))
         pending_int = await database.fetch_val("SELECT COUNT(*) FROM ATS_ENTREVISTAS WHERE tenant_id = ? AND status = 'scheduled'", (tid,))
+
+    # Total candidatos filtrado por empresa (via aplicaciones)
+    if empresa_id and vid_list:
+        total_cand = await database.fetch_val(
+            f"SELECT COUNT(DISTINCT candidate_id) FROM ATS_APLICACIONES WHERE tenant_id = ? AND vacancy_id IN ({ph})",
+            tuple([tid] + vid_list)
+        )
+    elif empresa_id and not vid_list:
+        total_cand = 0
+    else:
+        total_cand = await database.fetch_val("SELECT COUNT(*) FROM ATS_CANDIDATOS WHERE tenant_id = ?", (tid,))
 
     pending_offers = await database.fetch_val(f"SELECT COUNT(*) FROM ATS_OFERTAS WHERE tenant_id = ? {empresa_filter} AND status = 'sent'", tuple(empresa_params_req))
     total_hires    = await database.fetch_val(f"SELECT COUNT(*) FROM ATS_CONTRATACIONES WHERE tenant_id = ? {empresa_filter}", tuple(empresa_params_req))
