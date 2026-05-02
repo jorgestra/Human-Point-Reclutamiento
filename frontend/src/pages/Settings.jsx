@@ -23,7 +23,8 @@ import {
   Check,
   X,
   Kanban,
-  GripVertical
+  GripVertical,
+  Calendar
 } from 'lucide-react';
 
 // Generic Catalog Manager Component
@@ -161,6 +162,8 @@ export default function Settings() {
   const [professionalLevels, setProfessionalLevels] = useState([]);
   const [professionalAreas, setProfessionalAreas] = useState([]);
   const [languages, setLanguages] = useState([]);
+  const [interviewTypes, setInterviewTypes] = useState([]);
+  const [loadingInterviewTypes, setLoadingInterviewTypes] = useState(true);
   const [pipelineStages, setPipelineStages] = useState([]);
   const [editingStage, setEditingStage] = useState(null);
   const [stageForm, setStageForm] = useState({ name: '', color: '#64748b', stage_order: 99 });
@@ -284,6 +287,19 @@ export default function Settings() {
     }
   };
 
+  const loadInterviewTypes = async () => {
+    try {
+      setLoadingInterviewTypes(true);
+      const data = await apiRequest('/catalogs/interview-types');
+      setInterviewTypes(data || []);
+    } catch (error) {
+      console.error('Error loading interview types:', error);
+      toast.error('Error al cargar tipos de entrevista');
+    } finally {
+      setLoadingInterviewTypes(false);
+    }
+  };
+
   useEffect(() => {
     loadCompanies();
     loadHRPersonnel();
@@ -291,6 +307,7 @@ export default function Settings() {
     loadProfessionalAreas();
     loadLanguages();
     loadPipelineStages();
+    loadInterviewTypes();
   }, []);
 
   // CRUD handlers for Companies
@@ -349,6 +366,20 @@ export default function Settings() {
     loadProfessionalAreas();
   };
 
+  // CRUD handlers for Interview Types
+  const handleAddInterviewType = async (data) => {
+    await apiRequest('/catalogs/interview-types', { method: 'POST', body: JSON.stringify(data) });
+    loadInterviewTypes();
+  };
+  const handleEditInterviewType = async (id, data) => {
+    await apiRequest(`/catalogs/interview-types/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    loadInterviewTypes();
+  };
+  const handleDeleteInterviewType = async (id) => {
+    await apiRequest(`/catalogs/interview-types/${id}`, { method: 'DELETE' });
+    loadInterviewTypes();
+  };
+
   // CRUD handlers for Languages
   const handleAddLanguage = async (data) => {
     await apiRequest('/catalogs/languages', { method: 'POST', body: JSON.stringify(data) });
@@ -395,6 +426,10 @@ export default function Settings() {
           <TabsTrigger value="languages" className="flex items-center gap-1.5" data-testid="tab-languages">
             <Languages size={14} />
             <span className="hidden sm:inline">Idiomas</span>
+          </TabsTrigger>
+          <TabsTrigger value="interview-types" className="flex items-center gap-1.5" data-testid="tab-interview-types">
+            <Calendar size={14} />
+            <span className="hidden sm:inline">Tipos Entrevista</span>
           </TabsTrigger>
           <TabsTrigger value="pipeline" className="flex items-center gap-1.5" data-testid="tab-pipeline">
             <Kanban size={14} />
@@ -685,6 +720,47 @@ export default function Settings() {
                     placeholder="en, es, fr, de, etc."
                     maxLength={5}
                     data-testid="language-code-input"
+                  />
+                </div>
+              </>
+            )}
+          />
+        </TabsContent>
+
+        {/* Interview Types Tab */}
+        <TabsContent value="interview-types" className="mt-6">
+          <CatalogManager
+            title="Tipos de Entrevista"
+            icon={Calendar}
+            items={interviewTypes}
+            loading={loadingInterviewTypes}
+            onAdd={handleAddInterviewType}
+            onEdit={handleEditInterviewType}
+            onDelete={handleDeleteInterviewType}
+            columns={[
+              { key: 'name', label: 'Nombre' },
+              { key: 'code', label: 'Código', render: (val) => (
+                val ? <Badge variant="outline">{val}</Badge> : '-'
+              )}
+            ]}
+            renderForm={(formData, setFormData) => (
+              <>
+                <div className="space-y-2">
+                  <Label>Nombre *</Label>
+                  <Input
+                    value={formData.name || ''}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Entrevista Técnica, Fit Cultural, etc."
+                    data-testid="interview-type-name-input"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Código</Label>
+                  <Input
+                    value={formData.code || ''}
+                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                    placeholder="technical, cultural, final, etc."
+                    data-testid="interview-type-code-input"
                   />
                 </div>
               </>
