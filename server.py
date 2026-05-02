@@ -326,6 +326,7 @@ class InterviewCreate(BaseModel):
     location: Optional[str] = None
     meeting_link: Optional[str] = None
     evaluators: List[str] = Field(default_factory=list)
+    interviewer_id: Optional[str] = None  # alias simple para un solo evaluador
     notes: Optional[str] = None
 
 class Interview(AuditMixin):
@@ -1530,7 +1531,11 @@ async def create_interview(data: InterviewCreate, user: dict = Depends(check_rol
          data.duration_minutes, data.interview_type, data.location, data.meeting_link,
          data.notes, user['id'])
     )
-    for ev_id in data.evaluators:
+    # Unificar interviewer_id y evaluators en una sola lista
+    ev_ids = list(data.evaluators)
+    if data.interviewer_id and data.interviewer_id not in ev_ids:
+        ev_ids.append(data.interviewer_id)
+    for ev_id in ev_ids:
         await database.execute(
             "INSERT INTO ATS_ENTREVISTAS_EVALUADORES (id, interview_id, evaluator_id) VALUES (?, ?, ?)",
             (str(uuid.uuid4()), int_id, ev_id)
@@ -2180,6 +2185,52 @@ async def delete_professional_area(area_id: str, user: dict = Depends(check_role
     await database.execute("UPDATE ATS_AREAS_PROFESIONALES SET is_active=0 WHERE id = ?", (area_id,))
     return {"message": "Área desactivada"}
 
+# ============ TIPOS DE ENTREVISTA ============
+@api_router.get("/catalogs/interview-types")
+async def list_interview_types(user: dict = Depends(get_current_user)):
+    rows = await database.fetch_all(
+        "SELECT * FROM ATS_TIPOS_ENTREVISTA WHERE tenant_id = ? AND is_active = 1 ORDER BY sort_order, name",
+        (user['tenant_id'],)
+    )
+    if not rows:
+        # Si aún no hay datos, devolver los tipos por defecto
+        return [
+            {"code": "hr", "name": "Entrevista RH"},
+            {"code": "technical", "name": "Técnica"},
+            {"code": "cultural", "name": "Fit Cultural"},
+            {"code": "final", "name": "Final"},
+            {"code": "exam", "name": "Examen"},
+        ]
+    return serialize_list(rows)
+
+@api_router.post("/catalogs/interview-types")
+async def create_interview_type(data: dict, user: dict = Depends(check_role([UserRole.ADMIN]))):
+    type_id = str(uuid.uuid4())
+    code = data.get('code', type_id[:8])
+    name = data.get('name', '')
+    sort_order = data.get('sort_order', 0)
+    await database.execute(
+        "INSERT INTO ATS_TIPOS_ENTREVISTA (id, tenant_id, code, name, sort_order) VALUES (?, ?, ?, ?, ?)",
+        (type_id, user['tenant_id'], code, name, sort_order)
+    )
+    return await database.fetch_one("SELECT * FROM ATS_TIPOS_ENTREVISTA WHERE id = ?", (type_id,))
+
+@api_router.put("/catalogs/interview-types/{type_id}")
+async def update_interview_type(type_id: str, data: dict, user: dict = Depends(check_role([UserRole.ADMIN]))):
+    await database.execute(
+        "UPDATE ATS_TIPOS_ENTREVISTA SET name=?, sort_order=?, updated_at=GETUTCDATE() WHERE id = ? AND tenant_id = ?",
+        (data.get('name'), data.get('sort_order', 0), type_id, user['tenant_id'])
+    )
+    return await database.fetch_one("SELECT * FROM ATS_TIPOS_ENTREVISTA WHERE id = ?", (type_id,))
+
+@api_router.delete("/catalogs/interview-types/{type_id}")
+async def delete_interview_type(type_id: str, user: dict = Depends(check_role([UserRole.ADMIN]))):
+    await database.execute(
+        "UPDATE ATS_TIPOS_ENTREVISTA SET is_active=0 WHERE id = ? AND tenant_id = ?",
+        (type_id, user['tenant_id'])
+    )
+    return {"message": "Tipo desactivado"}
+
 @api_router.get("/catalogs/languages")
 async def list_languages(user: dict = Depends(get_current_user)):
     rows = await database.fetch_all(
@@ -2800,7 +2851,40 @@ async def startup():
     await database.execute("""
         IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ATS_CANDIDATOS_EXPERIENCIA') AND name = 'departure_reason')
         ALTER TABLE ATS_CANDIDATOS_EXPERIENCIA ADD departure_reason NVARCHAR(500)
+
+        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='ATS_TIPOS_ENTREVISTA' AND xtype='U')
+        CREATE TABLE ATS_TIPOS_ENTREVISTA (
+            id NVARCHAR(36) PRIMARY KEY,
+            tenant_id NVARCHAR(36) NOT NULL,
+            code NVARCHAR(50) NOT NULL,
+            name NVARCHAR(100) NOT NULL,
+            is_active BIT DEFAULT 1,
+            sort_order INT DEFAULT 0,
+            created_at DATETIME DEFAULT GETUTCDATE()
+        )
     """)
+    # Insertar tipos de entrevista por defecto si la tabla está vacía
+    defaults = [
+        ('hr', 'Entrevista RH'),
+        ('technical', 'Técnica'),
+        ('cultural', 'Fit Cultural'),
+        ('final', 'Final'),
+        ('exam', 'Examen'),
+    ]
+    # Para todos los tenants existentes
+    tenants = await database.fetch_all("SELECT DISTINCT tenant_id FROM ATS_ENTREVISTAS")
+    system_tenants = await database.fetch_all("SELECT DISTINCT id FROM ATS_TENANTS") if True else []
+    all_tenants = list({r['tenant_id'] for r in tenants} | {r['id'] for r in system_tenants if 'id' in r})
+    for tid in all_tenants:
+        existing = await database.fetch_val(
+            "SELECT COUNT(*) FROM ATS_TIPOS_ENTREVISTA WHERE tenant_id = ?", (tid,)
+        )
+        if not existing:
+            for i, (code, name) in enumerate(defaults):
+                await database.execute(
+                    "INSERT INTO ATS_TIPOS_ENTREVISTA (id, tenant_id, code, name, sort_order) VALUES (?, ?, ?, ?, ?)",
+                    (str(__import__('uuid').uuid4()), tid, code, name, i)
+                )
     logger.info("Human Point ATS v2.0 — SQL Server ready")
 
 @app.on_event("shutdown")

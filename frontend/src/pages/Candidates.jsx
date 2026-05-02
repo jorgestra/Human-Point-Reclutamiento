@@ -715,6 +715,7 @@ export const CandidateDetail = () => {
   // Create Interview states
   const [showInterviewDialog, setShowInterviewDialog] = useState(false);
   const [hrPersonnel, setHrPersonnel] = useState([]);
+  const [interviewTypes, setInterviewTypes] = useState([]);
   const [interviewForm, setInterviewForm] = useState({
     application_id: '',
     scheduled_date: '',
@@ -785,15 +786,17 @@ export const CandidateDetail = () => {
 
   const loadCatalogs = async () => {
     try {
-      const [levels, areas, langs, stages] = await Promise.all([
+      const [levels, areas, langs, stages, intTypes] = await Promise.all([
         apiRequest('/catalogs/professional-levels'),
         apiRequest('/catalogs/professional-areas'),
         apiRequest('/catalogs/languages'),
-        apiRequest('/pipeline/stages')
+        apiRequest('/pipeline/stages'),
+        apiRequest('/catalogs/interview-types')
       ]);
       setProfessionalLevels(levels || []);
       setProfessionalAreas(areas || []);
       setLanguages(langs || []);
+      setInterviewTypes(intTypes || []);
       // Crear mapa code -> {label, color} para los badges de etapa
       const map = {};
       (stages || []).forEach(s => { map[s.code] = { label: s.name, color: 'bg-slate-100 text-slate-700', bgColor: s.color }; });
@@ -2382,11 +2385,17 @@ body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;background:#fff;font-
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="hr">Entrevista RH</SelectItem>
-                    <SelectItem value="technical">Técnica</SelectItem>
-                    <SelectItem value="cultural">Fit Cultural</SelectItem>
-                    <SelectItem value="final">Final</SelectItem>
-                    <SelectItem value="exam">Examen</SelectItem>
+                    {interviewTypes.length > 0 ? interviewTypes.map(t => (
+                      <SelectItem key={t.code || t.id} value={t.code || t.id}>{t.name}</SelectItem>
+                    )) : (
+                      <>
+                        <SelectItem value="hr">Entrevista RH</SelectItem>
+                        <SelectItem value="technical">Técnica</SelectItem>
+                        <SelectItem value="cultural">Fit Cultural</SelectItem>
+                        <SelectItem value="final">Final</SelectItem>
+                        <SelectItem value="exam">Examen</SelectItem>
+                      </>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
