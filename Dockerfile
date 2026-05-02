@@ -30,7 +30,7 @@ COPY db.py .
 # Copiar resto
 COPY . .
 
-# Cache bust: 2026-04-17-v2
+# Cache bust: 2026-05-01-v1
 EXPOSE 8000
 
 CMD sh -c "uvicorn server:app --host 0.0.0.0 --port $PORT"
