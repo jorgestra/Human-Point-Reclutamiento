@@ -1432,7 +1432,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;background:#fff;font-
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => { loadVacancies(); loadHRPersonnel(); setShowInterviewDialog(true); }}
+                      onClick={() => { loadVacancies(); loadHRPersonnel(); loadCatalogs(); setShowInterviewDialog(true); }}
                       disabled={!candidate.applications?.length}
                       data-testid="create-interview-btn"
                     >
