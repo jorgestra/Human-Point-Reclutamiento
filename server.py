@@ -15,6 +15,7 @@ import bcrypt
 from enum import Enum
 
 import db as database
+import httpx
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -1543,6 +1544,143 @@ async def move_pipeline(app_id: str, move: PipelineMove, user: dict = Depends(ge
 
 # ============ INTERVIEWS ROUTES ============
 @api_router.post("/interviews")
+async def send_interview_email(interview_id: str, interview_row: dict, evaluators: list, tenant_id: str) -> None:
+    """Envía correo de confirmación de entrevista al entrevistador vía Resend."""
+    api_key = os.environ.get("RESEND_API_KEY")
+    if not api_key:
+        logger.warning("RESEND_API_KEY no configurada — correo no enviado")
+        return
+
+    try:
+        # Obtener datos del candidato y vacante
+        app = await database.fetch_one("SELECT * FROM ATS_APLICACIONES WHERE id = ?", (interview_row.get('application_id'),))
+        candidate = None
+        vacancy = None
+        if app:
+            candidate = await database.fetch_one("SELECT * FROM ATS_CANDIDATOS WHERE id = ?", (app['candidate_id'],))
+            vacancy   = await database.fetch_one("SELECT * FROM ATS_VACANTES WHERE id = ?", (app['vacancy_id'],))
+
+        candidate_name = f"{candidate['first_name']} {candidate['last_name']}" if candidate else "Candidato"
+        vacancy_title  = vacancy['title'] if vacancy else "Vacante"
+
+        # Formatear fecha y hora
+        scheduled_at = interview_row.get('scheduled_at')
+        if isinstance(scheduled_at, str):
+            scheduled_at = datetime.fromisoformat(scheduled_at)
+        fecha = scheduled_at.strftime('%d/%m/%Y') if scheduled_at else 'Por confirmar'
+        hora  = scheduled_at.strftime('%I:%M %p') if scheduled_at else 'Por confirmar'
+
+        duration   = interview_row.get('duration_minutes', 60)
+        tipo       = interview_row.get('interview_type', 'Entrevista')
+        location   = interview_row.get('location') or ''
+        meeting_link = interview_row.get('meeting_link') or ''
+        notes      = interview_row.get('notes') or ''
+
+        entrevistador_nombre = evaluators[0].get('evaluator_name', 'Entrevistador') if evaluators else 'Entrevistador'
+
+        ubicacion_html = ''
+        if location:
+            ubicacion_html = f'<tr><td style="padding:6px 0;color:#64748b;font-size:14px;">📍 Lugar</td><td style="padding:6px 0;font-size:14px;font-weight:600;">{location}</td></tr>'
+        if meeting_link:
+            ubicacion_html += f'<tr><td style="padding:6px 0;color:#64748b;font-size:14px;">🔗 Link</td><td style="padding:6px 0;font-size:14px;"><a href="{meeting_link}" style="color:#004aad;">{meeting_link}</a></td></tr>'
+        if notes:
+            ubicacion_html += f'<tr><td style="padding:6px 0;color:#64748b;font-size:14px;">📝 Notas</td><td style="padding:6px 0;font-size:14px;">{notes}</td></tr>'
+
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"></head>
+        <body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 0;">
+            <tr><td align="center">
+              <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+                <!-- Header -->
+                <tr>
+                  <td style="background:linear-gradient(135deg,#030940 0%,#004aad 60%,#38b6ff 100%);padding:32px 40px;text-align:center;">
+                    <img src="https://humanpoint.com.gt/wp-content/uploads/2024/01/Logo-Human-Point-Blanco.png"
+                         alt="Human Point" height="48"
+                         onerror="this.style.display='none'"
+                         style="height:48px;margin-bottom:16px;display:block;margin-left:auto;margin-right:auto;" />
+                    <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.5px;">
+                      Entrevista Agendada
+                    </h1>
+                    <p style="margin:8px 0 0;color:#bfdbfe;font-size:14px;">Human Point ATS</p>
+                  </td>
+                </tr>
+                <!-- Body -->
+                <tr>
+                  <td style="padding:36px 40px;">
+                    <p style="margin:0 0 24px;color:#1e293b;font-size:16px;">
+                      Hola <strong>{entrevistador_nombre}</strong>, se ha agendado una entrevista para el puesto de <strong>{vacancy_title}</strong>.
+                    </p>
+
+                    <!-- Candidate card -->
+                    <div style="background:#f8fafc;border-left:4px solid #004aad;border-radius:8px;padding:20px 24px;margin-bottom:24px;">
+                      <p style="margin:0 0 4px;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:1px;font-weight:600;">Candidato</p>
+                      <p style="margin:0;color:#0f172a;font-size:20px;font-weight:700;">{candidate_name}</p>
+                      <p style="margin:4px 0 0;color:#38b6ff;font-size:14px;">{vacancy_title}</p>
+                    </div>
+
+                    <!-- Details table -->
+                    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+                      <tr>
+                        <td style="padding:6px 0;color:#64748b;font-size:14px;">📅 Fecha</td>
+                        <td style="padding:6px 0;font-size:14px;font-weight:600;">{fecha}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px 0;color:#64748b;font-size:14px;">🕐 Hora</td>
+                        <td style="padding:6px 0;font-size:14px;font-weight:600;">{hora}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px 0;color:#64748b;font-size:14px;">⏱ Duración</td>
+                        <td style="padding:6px 0;font-size:14px;font-weight:600;">{duration} minutos</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px 0;color:#64748b;font-size:14px;">🎯 Tipo</td>
+                        <td style="padding:6px 0;font-size:14px;font-weight:600;">{tipo}</td>
+                      </tr>
+                      {ubicacion_html}
+                    </table>
+                  </td>
+                </tr>
+                <!-- Footer -->
+                <tr>
+                  <td style="background:#f8fafc;padding:20px 40px;text-align:center;border-top:1px solid #e2e8f0;">
+                    <p style="margin:0;color:#94a3b8;font-size:12px;">
+                      Human Point ATS · ITligencia · <a href="https://humanpoint.com.gt" style="color:#004aad;text-decoration:none;">humanpoint.com.gt</a>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td></tr>
+          </table>
+        </body>
+        </html>
+        """
+
+        # Por ahora enviar siempre a jorgestra@yahoo.com
+        to_email = "jorgestra@yahoo.com"
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                "https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                json={
+                    "from": "Human Point ATS <onboarding@resend.dev>",
+                    "to": [to_email],
+                    "subject": f"Entrevista agendada: {candidate_name} — {vacancy_title}",
+                    "html": html
+                },
+                timeout=10
+            )
+            if resp.status_code not in (200, 201):
+                logger.error(f"Resend error {resp.status_code}: {resp.text}")
+            else:
+                logger.info(f"Correo de entrevista enviado a {to_email}")
+    except Exception as e:
+        logger.error(f"Error enviando correo de entrevista: {e}")
+
+
 async def create_interview(data: InterviewCreate, user: dict = Depends(check_role([UserRole.ADMIN, UserRole.RECRUITER]))):
     app_row = await database.fetch_one("SELECT * FROM ATS_APLICACIONES WHERE id = ? AND tenant_id = ?", (data.application_id, user['tenant_id']))
     if not app_row:
@@ -1569,6 +1707,11 @@ async def create_interview(data: InterviewCreate, user: dict = Depends(check_rol
     row = await database.fetch_one("SELECT * FROM ATS_ENTREVISTAS WHERE id = ?", (int_id,))
     d = serialize_doc(row)
     d['evaluators'] = await database.get_interview_evaluators(int_id)
+
+    # Enviar correo de confirmación (fire and forget — no bloquea la respuesta)
+    import asyncio
+    asyncio.create_task(send_interview_email(int_id, dict(row), d['evaluators'], user['tenant_id']))
+
     return d
 
 @api_router.get("/interviews")
