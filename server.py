@@ -1658,7 +1658,7 @@ async def send_interview_email(interview_id: str, interview_row: dict, evaluator
         """
 
         # Por ahora enviar siempre a jorgestra@yahoo.com
-        to_email = "jorgestra@yahoo.com"
+        to_email = "jorgestra@gmail.com"
 
         async with httpx.AsyncClient() as client:
             resp = await client.post(
