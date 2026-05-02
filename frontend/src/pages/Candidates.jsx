@@ -700,7 +700,7 @@ export const CandidateDetail = () => {
   // Experience CRUD states
   const [showExpDialog, setShowExpDialog] = useState(false);
   const [editingExp, setEditingExp] = useState(null);
-  const [expFormData, setExpFormData] = useState({ company: '', position: '', start_date: '', end_date: '', is_current: false, description: '' });
+  const [expFormData, setExpFormData] = useState({ company: '', position: '', start_date: '', end_date: '', is_current: false, description: '', departure_reason: '' });
   
   // Education CRUD states
   const [showEduDialog, setShowEduDialog] = useState(false);
@@ -2191,6 +2191,16 @@ body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;background:#fff;font-
                 data-testid="exp-description-input"
               />
             </div>
+            {!expFormData.is_current && (
+              <div className="space-y-2">
+                <Label>¿Por qué salió?</Label>
+                <Input
+                  value={expFormData.departure_reason || ''}
+                  onChange={(e) => setExpFormData({ ...expFormData, departure_reason: e.target.value })}
+                  placeholder="Motivo de salida..."
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setShowExpDialog(false)}>Cancelar</Button>
