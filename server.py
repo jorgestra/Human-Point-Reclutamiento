@@ -1680,6 +1680,88 @@ async def send_interview_email(interview_id: str, interview_row: dict, evaluator
         logger.error(f"Error enviando correo de entrevista: {e}")
 
 
+async def send_interview_whatsapp(interview_row: dict, evaluators: list) -> None:
+    """Envía mensaje WhatsApp al entrevistador vía Twilio Sandbox."""
+    account_sid = os.environ.get("TWILIO_ACCOUNT_SID")
+    auth_token  = os.environ.get("TWILIO_AUTH_TOKEN")
+    from_number = os.environ.get("TWILIO_WHATSAPP_FROM", "whatsapp:+14155238886")
+
+    if not account_sid or not auth_token:
+        logger.warning("Twilio no configurado — WhatsApp no enviado")
+        return
+
+    try:
+        # Obtener datos del candidato y vacante
+        app = await database.fetch_one("SELECT * FROM ATS_APLICACIONES WHERE id = ?", (interview_row.get('application_id'),))
+        candidate = vacancy = None
+        if app:
+            candidate = await database.fetch_one("SELECT * FROM ATS_CANDIDATOS WHERE id = ?", (app['candidate_id'],))
+            vacancy   = await database.fetch_one("SELECT * FROM ATS_VACANTES WHERE id = ?", (app['vacancy_id'],))
+
+        candidate_name = f"{candidate['first_name']} {candidate['last_name']}" if candidate else "Candidato"
+        vacancy_title  = vacancy['title'] if vacancy else "Vacante"
+
+        # Formatear fecha y hora
+        scheduled_at = interview_row.get('scheduled_at')
+        if isinstance(scheduled_at, str):
+            from datetime import datetime
+            scheduled_at = datetime.fromisoformat(scheduled_at)
+        fecha = scheduled_at.strftime('%d/%m/%Y') if scheduled_at else 'Por confirmar'
+        hora  = scheduled_at.strftime('%I:%M %p') if scheduled_at else 'Por confirmar'
+
+        duration     = interview_row.get('duration_minutes', 60)
+        tipo         = interview_row.get('interview_type', 'Entrevista')
+        location     = interview_row.get('location') or ''
+        meeting_link = interview_row.get('meeting_link') or ''
+        notes        = interview_row.get('notes') or ''
+
+        entrevistador = evaluators[0].get('evaluator_name', 'Entrevistador') if evaluators else 'Entrevistador'
+
+        lines = [
+            f"🗓 *Entrevista Agendada — Human Point ATS*",
+            f"",
+            f"Hola *{entrevistador}*, se ha programado una entrevista:",
+            f"",
+            f"👤 *Candidato:* {candidate_name}",
+            f"💼 *Puesto:* {vacancy_title}",
+            f"📅 *Fecha:* {fecha}",
+            f"🕐 *Hora:* {hora}",
+            f"⏱ *Duración:* {duration} minutos",
+            f"🎯 *Tipo:* {tipo}",
+        ]
+        if location:
+            lines.append(f"📍 *Lugar:* {location}")
+        if meeting_link:
+            lines.append(f"🔗 *Link:* {meeting_link}")
+        if notes:
+            lines.append(f"📝 *Notas:* {notes}")
+        lines.append("")
+        lines.append("_Human Point ATS · humanpoint.com.gt_")
+
+        message_body = "\n".join(lines)
+
+        # Por ahora enviar al número de prueba (sandbox)
+        to_number = "whatsapp:+50241512317"  # número Jorge en sandbox
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json",
+                auth=(account_sid, auth_token),
+                data={
+                    "From": from_number,
+                    "To":   to_number,
+                    "Body": message_body,
+                },
+                timeout=10
+            )
+            if resp.status_code not in (200, 201):
+                logger.error(f"Twilio error {resp.status_code}: {resp.text}")
+            else:
+                logger.info(f"WhatsApp enviado a {to_number}")
+    except Exception as e:
+        logger.error(f"Error enviando WhatsApp: {e}")
+
+
 @api_router.post("/interviews")
 async def create_interview(data: InterviewCreate, user: dict = Depends(check_role([UserRole.ADMIN, UserRole.RECRUITER]))):
     app_row = await database.fetch_one("SELECT * FROM ATS_APLICACIONES WHERE id = ? AND tenant_id = ?", (data.application_id, user['tenant_id']))
@@ -1708,9 +1790,10 @@ async def create_interview(data: InterviewCreate, user: dict = Depends(check_rol
     d = serialize_doc(row)
     d['evaluators'] = await database.get_interview_evaluators(int_id)
 
-    # Enviar correo de confirmación (fire and forget — no bloquea la respuesta)
+    # Enviar correo y WhatsApp (fire and forget — no bloquea la respuesta)
     import asyncio
     asyncio.create_task(send_interview_email(int_id, dict(row), d['evaluators'], user['tenant_id']))
+    asyncio.create_task(send_interview_whatsapp(dict(row), d['evaluators']))
 
     return d
 
