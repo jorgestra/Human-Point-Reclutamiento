@@ -1501,18 +1501,18 @@ async def move_pipeline(app_id: str, move: PipelineMove, user: dict = Depends(ge
 
     # Evitar mover a la misma etapa
     current_stage = app_row.get('current_stage') or 'applied'
-    if current_stage == move.new_stage.value:
-        return {"message": "Candidato ya está en esta etapa", "new_stage": move.new_stage.value}
+    if current_stage == move.new_stage:
+        return {"message": "Candidato ya está en esta etapa", "new_stage": move.new_stage}
 
     moved_by_name = f"{user.get('first_name', '')} {user.get('last_name', '')}".strip()
     ops = [
         ("UPDATE ATS_APLICACIONES SET current_stage=?, updated_at=GETUTCDATE() WHERE id = ?",
-         (move.new_stage.value, app_id)),
+         (move.new_stage, app_id)),
         ("INSERT INTO ATS_PIPELINE_HISTORIAL (id, application_id, from_stage, to_stage, moved_by, moved_by_name, notes) VALUES (?, ?, ?, ?, ?, ?, ?)",
-         (str(uuid.uuid4()), app_id, current_stage, move.new_stage.value, user['id'], moved_by_name, move.notes))
+         (str(uuid.uuid4()), app_id, current_stage, move.new_stage, user['id'], moved_by_name, move.notes))
     ]
     await database.execute_transaction(ops)
-    return {"message": "Candidato movido", "new_stage": move.new_stage.value}
+    return {"message": "Candidato movido", "new_stage": move.new_stage}
 
 # ============ INTERVIEWS ROUTES ============
 @api_router.post("/interviews")
