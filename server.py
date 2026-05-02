@@ -1543,7 +1543,6 @@ async def move_pipeline(app_id: str, move: PipelineMove, user: dict = Depends(ge
     return {"message": "Candidato movido", "new_stage": move.new_stage}
 
 # ============ INTERVIEWS ROUTES ============
-@api_router.post("/interviews")
 async def send_interview_email(interview_id: str, interview_row: dict, evaluators: list, tenant_id: str) -> None:
     """Envía correo de confirmación de entrevista al entrevistador vía Resend."""
     api_key = os.environ.get("RESEND_API_KEY")
@@ -1681,6 +1680,7 @@ async def send_interview_email(interview_id: str, interview_row: dict, evaluator
         logger.error(f"Error enviando correo de entrevista: {e}")
 
 
+@api_router.post("/interviews")
 async def create_interview(data: InterviewCreate, user: dict = Depends(check_role([UserRole.ADMIN, UserRole.RECRUITER]))):
     app_row = await database.fetch_one("SELECT * FROM ATS_APLICACIONES WHERE id = ? AND tenant_id = ?", (data.application_id, user['tenant_id']))
     if not app_row:
