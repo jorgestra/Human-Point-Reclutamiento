@@ -284,7 +284,7 @@ export const Reports = () => {
                 <tbody>
                   {timeToHire.by_empresa.map((row, i) => (
                     <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
-                      <td className="py-3 px-4 text-slate-700">{row.empresa_id || 'Sin empresa'}</td>
+                      <td className="py-3 px-4 text-slate-700">{row.empresa_name || row.empresa_id || 'Sin empresa'}</td>
                       <td className="py-3 px-4 text-right font-semibold text-slate-900">{row.avg_days}</td>
                       <td className="py-3 px-4 text-right text-slate-600">{row.total_hires}</td>
                     </tr>

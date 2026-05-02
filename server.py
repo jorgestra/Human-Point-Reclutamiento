@@ -931,11 +931,31 @@ async def list_candidates(
     source: Optional[str] = None,
     candidate_status: Optional[str] = None,
     experience_range: Optional[str] = None,
+    empresa_id: Optional[str] = None,
+    vacancy_id: Optional[str] = None,
     sort_by: str = "created_at", sort_dir: str = "DESC",
     user: dict = Depends(get_current_user)
 ):
+    tid = user['tenant_id']
+
+    # Si hay filtro de empresa o vacante, obtener candidate_ids vía aplicaciones
+    candidate_id_filter = None
+    if empresa_id or vacancy_id:
+        app_where = "WHERE a.tenant_id = ?"
+        app_params = [tid]
+        if vacancy_id:
+            app_where += " AND a.vacancy_id = ?"; app_params.append(vacancy_id)
+        if empresa_id:
+            app_where += " AND v.empresa_id = ?"
+            app_params.append(empresa_id)
+        app_rows = await database.fetch_all(
+            f"SELECT DISTINCT a.candidate_id FROM ATS_APLICACIONES a JOIN ATS_VACANTES v ON v.id = a.vacancy_id {app_where}",
+            tuple(app_params)
+        )
+        candidate_id_filter = [r['candidate_id'] for r in app_rows] if app_rows else []
+
     where = "WHERE tenant_id = ?"
-    params = [user['tenant_id']]
+    params = [tid]
     if search:
         where += " AND (first_name LIKE ? OR last_name LIKE ? OR email LIKE ?)"
         s = f"%{search}%"; params += [s, s, s]
@@ -945,6 +965,12 @@ async def list_candidates(
         where += " AND candidate_status = ?"; params.append(candidate_status)
     if experience_range:
         where += " AND experience_range = ?"; params.append(experience_range)
+    if candidate_id_filter is not None:
+        if not candidate_id_filter:
+            return {"total": 0, "page": page, "limit": limit, "items": []}
+        ph = ','.join(['?'] * len(candidate_id_filter))
+        where += f" AND id IN ({ph})"
+        params += candidate_id_filter
 
     allowed_cols = {"created_at", "first_name", "last_name", "email"}
     col = sort_by if sort_by in allowed_cols else "created_at"
@@ -2499,7 +2525,15 @@ async def get_dashboard(empresa_id: Optional[str] = None, user: dict = Depends(g
 
     open_req   = await database.fetch_val(f"SELECT COUNT(*) FROM ATS_REQUISICIONES WHERE tenant_id = ? {empresa_filter} AND status IN ('draft','pending_approval','approved')", tuple(empresa_params_req))
     open_vac   = await database.fetch_val(f"SELECT COUNT(*) FROM ATS_VACANTES WHERE tenant_id = ? {empresa_filter} AND status = 'published'", tuple(empresa_params_req))
-    total_cand = await database.fetch_val("SELECT COUNT(*) FROM ATS_CANDIDATOS WHERE tenant_id = ?", (tid,))
+    if empresa_id and vid_list:
+        total_cand = await database.fetch_val(
+            f"SELECT COUNT(DISTINCT candidate_id) FROM ATS_APLICACIONES WHERE tenant_id = ? AND vacancy_id IN ({ph})",
+            tuple([tid] + vid_list)
+        )
+    elif empresa_id and not vid_list:
+        total_cand = 0
+    else:
+        total_cand = await database.fetch_val("SELECT COUNT(*) FROM ATS_CANDIDATOS WHERE tenant_id = ?", (tid,))
 
     # Inicializar vid_list y ph para uso posterior (pipeline_stages, recent)
     vid_list: list = []
@@ -2602,8 +2636,12 @@ async def get_hiring_metrics(empresa_id: Optional[str] = None, user: dict = Depe
             )
             stage_data.append({"stage": stage['code'], "count": count or 0})
 
-    open_vac   = await database.fetch_val("SELECT COUNT(*) FROM ATS_VACANTES WHERE tenant_id = ? AND status = 'published'", (tid,))
-    closed_vac = await database.fetch_val("SELECT COUNT(*) FROM ATS_VACANTES WHERE tenant_id = ? AND status = 'closed'", (tid,))
+    if empresa_id:
+        open_vac   = await database.fetch_val("SELECT COUNT(*) FROM ATS_VACANTES WHERE tenant_id = ? AND empresa_id = ? AND status = 'published'", (tid, empresa_id))
+        closed_vac = await database.fetch_val("SELECT COUNT(*) FROM ATS_VACANTES WHERE tenant_id = ? AND empresa_id = ? AND status = 'closed'", (tid, empresa_id))
+    else:
+        open_vac   = await database.fetch_val("SELECT COUNT(*) FROM ATS_VACANTES WHERE tenant_id = ? AND status = 'published'", (tid,))
+        closed_vac = await database.fetch_val("SELECT COUNT(*) FROM ATS_VACANTES WHERE tenant_id = ? AND status = 'closed'", (tid,))
 
     return {
         "total_applications": total_apps or 0,
@@ -2649,10 +2687,26 @@ async def get_time_to_hire(empresa_id: Optional[str] = None, user: dict = Depend
         by_empresa[eid]['total_days'] += m['days_to_hire']
         by_empresa[eid]['count'] += 1
 
+    # Resolver nombres de empresa
+    by_empresa_list = []
+    for eid, d in by_empresa.items():
+        nombre = None
+        if eid and eid != 'Sin empresa':
+            emp = await database.fetch_one("SELECT name FROM ATS_EMPRESAS WHERE id = ?", (eid,))
+            nombre = emp['name'] if emp else eid
+        else:
+            nombre = 'Sin empresa'
+        by_empresa_list.append({
+            "empresa_id": eid,
+            "empresa_name": nombre,
+            "avg_days": round(d['total_days']/d['count'], 1),
+            "total_hires": d['count']
+        })
+
     return {
         "avg_time_to_hire_days": avg_time_to_hire,
         "total_hires_analyzed": hire_count,
-        "by_empresa": [{"empresa_id": eid, "avg_days": round(d['total_days']/d['count'], 1), "total_hires": d['count']} for eid, d in by_empresa.items()],
+        "by_empresa": by_empresa_list,
         "details": metrics_data[:50],
     }
 

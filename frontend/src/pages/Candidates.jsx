@@ -71,6 +71,10 @@ export const Candidates = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [sourceFilter, setSourceFilter] = useState('all');
+  const [filterEmpresa, setFilterEmpresa] = useState('all');
+  const [filterVacancy, setFilterVacancy] = useState('all');
+  const [companies, setCompanies] = useState([]);
+  const [vacancies, setVacancies] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [professionalLevels, setProfessionalLevels] = useState([]);
   const [professionalAreas, setProfessionalAreas] = useState([]);
@@ -123,6 +127,8 @@ export const Candidates = () => {
       let endpoint = '/candidates?limit=100';
       if (sourceFilter !== 'all') endpoint += `&source=${sourceFilter}`;
       if (search) endpoint += `&search=${encodeURIComponent(search)}`;
+      if (filterEmpresa !== 'all') endpoint += `&empresa_id=${filterEmpresa}`;
+      if (filterVacancy !== 'all') endpoint += `&vacancy_id=${filterVacancy}`;
       
       const data = await apiRequest(endpoint);
       setCandidates(data.items || []);
@@ -132,10 +138,12 @@ export const Candidates = () => {
     } finally {
       setLoading(false);
     }
-  }, [sourceFilter, search]);
+  }, [sourceFilter, search, filterEmpresa, filterVacancy]);
 
   useEffect(() => {
     loadCandidates();
+    apiRequest('/companies').then(d => setCompanies(d || [])).catch(() => {});
+    apiRequest('/vacancies?status=published&limit=200').then(d => setVacancies(d || [])).catch(() => {});
     // Cargar catálogos para el formulario de creación
     Promise.all([
       apiRequest('/catalogs/professional-levels'),
@@ -276,6 +284,28 @@ export const Candidates = () => {
                 ))}
               </SelectContent>
             </Select>
+            {companies.length > 0 && (
+              <Select value={filterEmpresa} onValueChange={setFilterEmpresa}>
+                <SelectTrigger className="w-48" data-testid="empresa-filter">
+                  <SelectValue placeholder="Empresa" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las empresas</SelectItem>
+                  {companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
+            {vacancies.length > 0 && (
+              <Select value={filterVacancy} onValueChange={setFilterVacancy}>
+                <SelectTrigger className="w-48" data-testid="vacancy-filter">
+                  <SelectValue placeholder="Posición aplicada" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las posiciones</SelectItem>
+                  {vacancies.map(v => <SelectItem key={v.id} value={v.id}>{v.title}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
           </div>
         </CardContent>
       </Card>
