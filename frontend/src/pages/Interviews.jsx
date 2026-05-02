@@ -45,7 +45,7 @@ import {
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
 
-const INTERVIEW_TYPES = [
+const INTERVIEW_TYPES_DEFAULT = [
   { value: 'hr', label: 'Entrevista RH' },
   { value: 'technical', label: 'Entrevista Técnica' },
   { value: 'cultural', label: 'Fit Cultural' },
@@ -108,6 +108,7 @@ export const Interviews = () => {
   const [applications, setApplications] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [hrPersonnel, setHrPersonnel] = useState([]);
+  const [interviewTypes, setInterviewTypes] = useState(INTERVIEW_TYPES_DEFAULT);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [viewMode, setViewMode] = useState('list'); // list | month | week | day
@@ -153,6 +154,7 @@ export const Interviews = () => {
     loadApplications();
     loadCompanies();
     loadHRPersonnel();
+    loadInterviewTypes();
   }, []);
 
   useEffect(() => {
@@ -198,6 +200,17 @@ export const Interviews = () => {
       setCompanies(data || []);
     } catch {
       console.error('Error loading companies');
+    }
+  };
+
+  const loadInterviewTypes = async () => {
+    try {
+      const data = await apiRequest('/catalogs/interview-types');
+      if (data && data.length > 0) {
+        setInterviewTypes(data.map(t => ({ value: t.code || t.id, label: t.name })));
+      }
+    } catch {
+      console.error('Error loading interview types');
     }
   };
 
@@ -428,7 +441,7 @@ export const Interviews = () => {
 
   const renderInterviewCard = (interview) => {
     const statusInfo = INTERVIEW_STATUS[interview.status];
-    const typeInfo = INTERVIEW_TYPES.find(t => t.value === interview.interview_type);
+    const typeInfo = interviewTypes.find(t => t.value === interview.interview_type);
     return (
       <Card key={interview.id} className="border-slate-200 hover:border-cyan-200 transition-colors" data-testid={`interview-card-${interview.id}`}>
         <CardContent className="p-4">
@@ -830,7 +843,7 @@ export const Interviews = () => {
                 <Select value={formData.interview_type} onValueChange={v => setFormData({ ...formData, interview_type: v })}>
                   <SelectTrigger data-testid="interview-type-select"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {INTERVIEW_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                    {interviewTypes.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -921,7 +934,7 @@ export const Interviews = () => {
                 </div>
                 <div>
                   <p className="text-slate-500">Tipo</p>
-                  <p className="font-medium">{INTERVIEW_TYPES.find(t => t.value === selectedInterview.interview_type)?.label || selectedInterview.interview_type}</p>
+                  <p className="font-medium">{interviewTypes.find(t => t.value === selectedInterview.interview_type)?.label || selectedInterview.interview_type}</p>
                 </div>
                 <div>
                   <p className="text-slate-500">Estado</p>
@@ -1093,7 +1106,7 @@ export const Interviews = () => {
                   <Select value={editForm.interview_type} onValueChange={(v) => setEditForm({ ...editForm, interview_type: v })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {INTERVIEW_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                      {interviewTypes.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
