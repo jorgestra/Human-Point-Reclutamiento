@@ -1495,6 +1495,82 @@ async def get_candidate_interviews(candidate_id: str, user: dict = Depends(get_c
         result.append(d)
     return result
 
+
+# ============ TENANT CONFIG ============
+@api_router.get("/tenant/config")
+async def get_tenant_config(user: dict = Depends(get_current_user)):
+    row = await database.fetch_one(
+        "SELECT * FROM ATS_TENANTS WHERE id = ?", (user['tenant_id'],)
+    )
+    if not row:
+        return {"id": user['tenant_id'], "name": "Human Point", "short_name": "HP",
+                "logo_url": None, "primary_color": "#004aad", "secondary_color": "#38b6ff"}
+    return serialize_doc(row)
+
+@api_router.put("/tenant/config")
+async def update_tenant_config(data: dict, user: dict = Depends(check_role([UserRole.ADMIN]))):
+    tid = user['tenant_id']
+    existing = await database.fetch_one("SELECT id FROM ATS_TENANTS WHERE id = ?", (tid,))
+    if existing:
+        await database.execute(
+            """UPDATE ATS_TENANTS SET name=?, short_name=?, primary_color=?, secondary_color=?,
+               website=?, industry=?, updated_at=GETUTCDATE() WHERE id = ?""",
+            (data.get('name'), data.get('short_name'), data.get('primary_color', '#004aad'),
+             data.get('secondary_color', '#38b6ff'), data.get('website'), data.get('industry'), tid)
+        )
+    else:
+        await database.execute(
+            """INSERT INTO ATS_TENANTS (id, name, short_name, primary_color, secondary_color, website, industry)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (tid, data.get('name'), data.get('short_name'), data.get('primary_color', '#004aad'),
+             data.get('secondary_color', '#38b6ff'), data.get('website'), data.get('industry'))
+        )
+    return await database.fetch_one("SELECT * FROM ATS_TENANTS WHERE id = ?", (tid,))
+
+@api_router.post("/tenant/logo")
+async def upload_tenant_logo(
+    file: UploadFile = File(...),
+    user: dict = Depends(check_role([UserRole.ADMIN]))
+):
+    allowed = {'image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'}
+    if file.content_type not in allowed:
+        raise HTTPException(status_code=400, detail="Solo se permiten PNG, JPG, SVG o WEBP")
+    content = await file.read()
+    if len(content) > 2 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Logo muy grande (máx 2MB)")
+    upload_dir = ROOT_DIR / "uploads" / "logos"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    ext = file.filename.rsplit('.', 1)[-1] if '.' in file.filename else 'png'
+    file_id = f"logo_{user['tenant_id']}.{ext}"
+    (upload_dir / file_id).write_bytes(content)
+    logo_url = f"/api/tenant/logo/{file_id}"
+    tid = user['tenant_id']
+    existing = await database.fetch_one("SELECT id FROM ATS_TENANTS WHERE id = ?", (tid,))
+    if existing:
+        await database.execute(
+            "UPDATE ATS_TENANTS SET logo_url=?, logo_stored_path=?, updated_at=GETUTCDATE() WHERE id = ?",
+            (logo_url, str(upload_dir / file_id), tid)
+        )
+    else:
+        await database.execute(
+            "INSERT INTO ATS_TENANTS (id, name, logo_url, logo_stored_path) VALUES (?, ?, ?, ?)",
+            (tid, 'Mi Empresa', logo_url, str(upload_dir / file_id))
+        )
+    return {"logo_url": logo_url}
+
+@api_router.get("/tenant/logo/{file_id}")
+async def get_tenant_logo(file_id: str):
+    upload_dir = ROOT_DIR / "uploads" / "logos"
+    for f in upload_dir.iterdir():
+        if f.name == file_id:
+            media_types = {
+                '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+                '.svg': 'image/svg+xml', '.webp': 'image/webp'
+            }
+            ext = f.suffix.lower()
+            return FileResponse(str(f), media_type=media_types.get(ext, 'image/png'))
+    raise HTTPException(status_code=404, detail="Logo no encontrado")
+
 # ============ APPLICATIONS ROUTES ============
 @api_router.post("/applications")
 async def create_application(data: ApplicationCreate, user: dict = Depends(get_current_user)):
@@ -3220,6 +3296,31 @@ async def startup():
                     "INSERT INTO ATS_TIPOS_ENTREVISTA (id, tenant_id, code, name, sort_order) VALUES (?, ?, ?, ?, ?)",
                     (str(__import__('uuid').uuid4()), tid, code, name, i)
                 )
+    # Crear tabla ATS_TENANTS si no existe
+    await database.execute("""
+        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='ATS_TENANTS' AND xtype='U')
+        CREATE TABLE ATS_TENANTS (
+            id NVARCHAR(36) PRIMARY KEY,
+            name NVARCHAR(200) NOT NULL,
+            short_name NVARCHAR(100),
+            logo_url NVARCHAR(500),
+            logo_stored_path NVARCHAR(500),
+            primary_color NVARCHAR(20) DEFAULT '#004aad',
+            secondary_color NVARCHAR(20) DEFAULT '#38b6ff',
+            website NVARCHAR(200),
+            industry NVARCHAR(100),
+            created_at DATETIME DEFAULT GETUTCDATE(),
+            updated_at DATETIME DEFAULT GETUTCDATE()
+        )
+    """)
+    # Insertar tenant por defecto si no existe
+    default_tenant = await database.fetch_one("SELECT id FROM ATS_TENANTS WHERE id = 'default'")
+    if not default_tenant:
+        await database.execute(
+            """INSERT INTO ATS_TENANTS (id, name, short_name, primary_color, secondary_color)
+               VALUES (?, ?, ?, ?, ?)""",
+            ('default', 'Human Point', 'HP', '#004aad', '#38b6ff')
+        )
     logger.info("Human Point ATS v2.0 — SQL Server ready")
 
 @app.on_event("shutdown")

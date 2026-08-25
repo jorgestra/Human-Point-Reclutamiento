@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -17,7 +17,7 @@ import {
   Menu,
   Search
 } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { cn, apiRequest } from '../../lib/utils';
 
 const LOGO_URL = null; // Logo gestionado inline
 
@@ -37,6 +37,22 @@ const navItems = [
 export const Sidebar = ({ collapsed, setCollapsed }) => {
   const { user, logout, hasRole } = useAuth();
   const navigate = useNavigate();
+  const [tenantConfig, setTenantConfig] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('tenant_config') || 'null'); } catch { return null; }
+  });
+
+  useEffect(() => {
+    const loadTenantConfig = async () => {
+      try {
+        const data = await apiRequest('/tenant/config');
+        if (data) {
+          setTenantConfig(data);
+          localStorage.setItem('tenant_config', JSON.stringify(data));
+        }
+      } catch {}
+    };
+    if (user) loadTenantConfig();
+  }, [user]);
 
   const handleLogout = () => {
     logout();
@@ -68,11 +84,22 @@ export const Sidebar = ({ collapsed, setCollapsed }) => {
         <div className="h-16 flex items-center justify-between px-4 border-b border-slate-800">
           {!collapsed && (
             <div className="flex items-center gap-2" data-testid="sidebar-logo">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #004aad, #38b6ff)' }}>
-                <span className="text-white font-bold text-sm">HP</span>
-              </div>
+              {tenantConfig?.logo_url ? (
+                <img
+                  src={`${process.env.REACT_APP_BACKEND_URL}${tenantConfig.logo_url}`}
+                  alt={tenantConfig.name || 'Logo'}
+                  className="w-8 h-8 rounded-lg object-contain bg-white p-0.5"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ background: `linear-gradient(135deg, ${tenantConfig?.primary_color || '#004aad'}, ${tenantConfig?.secondary_color || '#38b6ff'})` }}>
+                  <span className="text-white font-bold text-sm">
+                    {(tenantConfig?.short_name || tenantConfig?.name || 'HP').slice(0,2).toUpperCase()}
+                  </span>
+                </div>
+              )}
               <div className="leading-tight">
-                <p className="text-white font-bold text-sm leading-none">Human Point</p>
+                <p className="text-white font-bold text-sm leading-none">{tenantConfig?.name || 'Human Point'}</p>
                 <p className="text-slate-400 text-xs">Reclutamiento</p>
               </div>
             </div>
