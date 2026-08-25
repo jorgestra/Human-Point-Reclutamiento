@@ -323,6 +323,7 @@ export const Candidates = () => {
                 <TableHead>Nivel</TableHead>
                 <TableHead>Áreas</TableHead>
                 <TableHead>Idiomas</TableHead>
+                <TableHead>Última Posición</TableHead>
                 <SortHeader label="Expectativa" field="expected_salary" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
                 <SortHeader label="Fecha" field="created_at" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
                 <TableHead className="w-[50px]"></TableHead>
@@ -331,13 +332,13 @@ export const Candidates = () => {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8">
+                  <TableCell colSpan={10} className="text-center py-8">
                     <div className="w-6 h-6 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto" />
                   </TableCell>
                 </TableRow>
               ) : candidates.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-slate-400">
+                  <TableCell colSpan={10} className="text-center py-8 text-slate-400">
                     No hay candidatos
                   </TableCell>
                 </TableRow>
@@ -404,6 +405,11 @@ export const Candidates = () => {
                     <TableCell>
                       <span className="text-sm text-slate-500 max-w-[80px] truncate block" title={candidate.languages_text}>
                         {candidate.languages_text || '-'}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-slate-500 max-w-[120px] truncate block" title={candidate.last_position}>
+                        {candidate.last_position || '-'}
                       </span>
                     </TableCell>
                     <TableCell>

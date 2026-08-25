@@ -793,7 +793,7 @@ export const Interviews = () => {
 
       {/* ─── CREATE INTERVIEW DIALOG ─── */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Programar Entrevista</DialogTitle>
           </DialogHeader>
@@ -1079,7 +1079,7 @@ export const Interviews = () => {
 
       {/* Edit Interview Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Entrevista</DialogTitle>
           </DialogHeader>

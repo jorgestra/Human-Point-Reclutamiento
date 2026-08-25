@@ -5,8 +5,6 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
 import { Eye, EyeOff, Briefcase } from 'lucide-react';
 
@@ -20,15 +18,6 @@ export const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   
   const [loginData, setLoginData] = useState({ email: '', password: '' });
-  const [registerData, setRegisterData] = useState({
-    email: '',
-    password: '',
-    first_name: '',
-    last_name: '',
-    role: 'recruiter',
-    department: ''
-  });
-
   if (user) {
     return <Navigate to="/dashboard" replace />;
   }
@@ -122,18 +111,11 @@ export const Login = () => {
                 Bienvenido
               </CardTitle>
               <CardDescription className="text-center">
-                Accede a tu cuenta o crea una nueva
+                Accede a tu cuenta de Human Point ATS
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs defaultValue="login" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-6">
-                  <TabsTrigger value="login" data-testid="login-tab">Iniciar Sesión</TabsTrigger>
-                  <TabsTrigger value="register" data-testid="register-tab">Registrarse</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="login">
-                  <form onSubmit={handleLogin} className="space-y-4">
+              <form onSubmit={handleLogin} className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="login-email">Correo Electrónico</Label>
                       <Input
@@ -175,100 +157,7 @@ export const Login = () => {
                     >
                       {loading ? 'Ingresando...' : 'Ingresar'}
                     </Button>
-                  </form>
-                </TabsContent>
-
-                <TabsContent value="register">
-                  <form onSubmit={handleRegister} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="first_name">Nombre</Label>
-                        <Input
-                          id="first_name"
-                          placeholder="Juan"
-                          value={registerData.first_name}
-                          onChange={(e) => setRegisterData({ ...registerData, first_name: e.target.value })}
-                          required
-                          data-testid="register-firstname-input"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="last_name">Apellido</Label>
-                        <Input
-                          id="last_name"
-                          placeholder="Pérez"
-                          value={registerData.last_name}
-                          onChange={(e) => setRegisterData({ ...registerData, last_name: e.target.value })}
-                          required
-                          data-testid="register-lastname-input"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="register-email">Correo Electrónico</Label>
-                      <Input
-                        id="register-email"
-                        type="email"
-                        placeholder="correo@empresa.com"
-                        value={registerData.email}
-                        onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
-                        required
-                        data-testid="register-email-input"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="register-password">Contraseña</Label>
-                      <Input
-                        id="register-password"
-                        type="password"
-                        placeholder="Mínimo 6 caracteres"
-                        value={registerData.password}
-                        onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
-                        required
-                        minLength={6}
-                        data-testid="register-password-input"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Rol</Label>
-                        <Select
-                          value={registerData.role}
-                          onValueChange={(value) => setRegisterData({ ...registerData, role: value })}
-                        >
-                          <SelectTrigger data-testid="register-role-select">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="admin">Administrador</SelectItem>
-                            <SelectItem value="recruiter">Reclutador</SelectItem>
-                            <SelectItem value="hiring_manager">Hiring Manager</SelectItem>
-                            <SelectItem value="viewer">Visor</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="department">Departamento</Label>
-                        <Input
-                          id="department"
-                          placeholder="Ej: TI"
-                          value={registerData.department}
-                          onChange={(e) => setRegisterData({ ...registerData, department: e.target.value })}
-                          data-testid="register-department-input"
-                        />
-                      </div>
-                    </div>
-                    <Button 
-                      type="submit" 
-                      className="w-full bg-slate-900 hover:bg-slate-800"
-                      disabled={loading}
-                      data-testid="register-submit-button"
-                    >
-                      {loading ? 'Creando cuenta...' : 'Crear Cuenta'}
-                    </Button>
-                  </form>
-                </TabsContent>
-              </Tabs>
+              </form>
             </CardContent>
           </Card>
         </div>

@@ -24,7 +24,10 @@ import {
   X,
   Kanban,
   GripVertical,
-  Calendar
+  Calendar,
+  ShieldCheck,
+  UserPlus,
+  Lock
 } from 'lucide-react';
 
 // Generic Catalog Manager Component
@@ -431,6 +434,10 @@ export default function Settings() {
             <Calendar size={14} />
             <span className="hidden sm:inline">Tipos Entrevista</span>
           </TabsTrigger>
+          <TabsTrigger value="usuarios" className="flex items-center gap-1.5" data-testid="tab-usuarios">
+            <ShieldCheck size={14} />
+            <span className="hidden sm:inline">Usuarios</span>
+          </TabsTrigger>
           <TabsTrigger value="pipeline" className="flex items-center gap-1.5" data-testid="tab-pipeline">
             <Kanban size={14} />
             <span className="hidden sm:inline">Pipeline</span>
@@ -766,6 +773,12 @@ export default function Settings() {
               </>
             )}
           />
+        </TabsContent>
+
+
+        {/* Usuarios Tab */}
+        <TabsContent value="usuarios" className="mt-6">
+          <UsersManager />
         </TabsContent>
 
         {/* Pipeline Stages Tab */}

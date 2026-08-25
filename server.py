@@ -540,19 +540,21 @@ def serialize_list(docs: list) -> list:
 
 # ============ AUTH ROUTES ============
 @api_router.post("/auth/register")
-async def register_user(user_data: UserCreate):
+async def register_user(user_data: UserCreate, admin: dict = Depends(check_role([UserRole.ADMIN]))):
+    """Crear nuevo usuario — solo admins autenticados pueden hacerlo."""
     existing = await database.fetch_one("SELECT id FROM ATS_USERS WHERE email = ?", (user_data.email,))
     if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=400, detail="Email ya registrado")
     user_id = str(uuid.uuid4())
     password_hash = hash_password(user_data.password)
+    tenant_id = admin['tenant_id']  # Siempre usar el tenant del admin
     await database.execute(
         """INSERT INTO ATS_USERS (id, tenant_id, email, password_hash, first_name, last_name, role, department)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-        (user_id, user_data.tenant_id, user_data.email, password_hash,
+        (user_id, tenant_id, user_data.email, password_hash,
          user_data.first_name, user_data.last_name, user_data.role.value, user_data.department)
     )
-    return {"message": "User registered successfully", "user_id": user_id}
+    return {"message": "Usuario creado exitosamente", "user_id": user_id}
 
 @api_router.post("/auth/login", response_model=TokenResponse)
 async def login(credentials: UserLogin):
@@ -565,6 +567,36 @@ async def login(credentials: UserLogin):
     token = create_token({"sub": user['id'], "tenant_id": user['tenant_id'], "role": user['role']})
     user_data = {k: v for k, v in user.items() if k != 'password_hash'}
     return {"access_token": token, "token_type": "bearer", "user": serialize_doc(user_data)}
+
+
+@api_router.put("/users/{user_id}/deactivate")
+async def deactivate_user(user_id: str, admin: dict = Depends(check_role([UserRole.ADMIN]))):
+    if user_id == admin['id']:
+        raise HTTPException(status_code=400, detail="No puedes desactivarte a ti mismo")
+    await database.execute(
+        "UPDATE ATS_USERS SET is_active=0 WHERE id = ? AND tenant_id = ?",
+        (user_id, admin['tenant_id'])
+    )
+    return {"message": "Usuario desactivado"}
+
+@api_router.put("/users/{user_id}/activate")
+async def activate_user(user_id: str, admin: dict = Depends(check_role([UserRole.ADMIN]))):
+    await database.execute(
+        "UPDATE ATS_USERS SET is_active=1 WHERE id = ? AND tenant_id = ?",
+        (user_id, admin['tenant_id'])
+    )
+    return {"message": "Usuario activado"}
+
+@api_router.put("/users/{user_id}/role")
+async def update_user_role(user_id: str, data: dict, admin: dict = Depends(check_role([UserRole.ADMIN]))):
+    new_role = data.get('role')
+    if new_role not in ['admin', 'recruiter', 'hiring_manager', 'viewer']:
+        raise HTTPException(status_code=400, detail="Rol inválido")
+    await database.execute(
+        "UPDATE ATS_USERS SET role=? WHERE id = ? AND tenant_id = ?",
+        (new_role, user_id, admin['tenant_id'])
+    )
+    return {"message": "Rol actualizado"}
 
 @api_router.get("/auth/me")
 async def get_me(user: dict = Depends(get_current_user)):
@@ -990,8 +1022,16 @@ async def list_candidates(
             d['professional_level_name'] = lvl['name'] if lvl else None
         areas = await database.get_candidate_areas(d['id'])
         d['professional_areas'] = [{"id": a['professional_area_id'], "name": a['area_name']} for a in areas]
+        d['professional_areas_text'] = ', '.join([a['area_name'] for a in areas if a.get('area_name')])
         langs = await database.get_candidate_languages(d['id'])
         d['languages'] = [{"id": l['language_id'], "name": l['language_name'], "level": l['language_level']} for l in langs]
+        d['languages_text'] = ', '.join([l['language_name'] for l in langs if l.get('language_name')])
+        # Last position from experience
+        last_exp = await database.fetch_one(
+            "SELECT TOP 1 position, company FROM ATS_CANDIDATOS_EXPERIENCIA WHERE candidate_id = ? ORDER BY is_current DESC, start_date DESC",
+            (d['id'],)
+        )
+        d['last_position'] = f"{last_exp['position']} en {last_exp['company']}" if last_exp else None
         # Last application
         last_app = await database.fetch_one(
             "SELECT TOP 1 * FROM ATS_APLICACIONES WHERE candidate_id = ? ORDER BY created_at DESC",
