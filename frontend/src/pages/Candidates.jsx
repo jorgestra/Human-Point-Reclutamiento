@@ -1048,8 +1048,8 @@ export const CandidateDetail = () => {
     // Cargar catálogos primero, luego abrir formulario con datos precargados
     await loadCatalogs();
 
-    const areaIds = candidate.professional_areas?.map(a => a.professional_area_id || a.area_id) || [];
-    const langIds = candidate.languages?.map(l => l.language_id) || [];
+    const areaIds = candidate.professional_areas?.map(a => a.professional_area_id || a.area_id || a.id) || [];
+    const langIds = candidate.languages?.map(l => l.language_id || l.id) || [];
     
     setEditFormData({
       first_name: candidate.first_name,
