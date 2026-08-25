@@ -1044,8 +1044,10 @@ export const CandidateDetail = () => {
     }
   };
 
-  const handleEdit = () => {
-    // Extract IDs from relational data
+  const handleEdit = async () => {
+    // Cargar catálogos primero, luego abrir formulario con datos precargados
+    await loadCatalogs();
+
     const areaIds = candidate.professional_areas?.map(a => a.professional_area_id || a.area_id) || [];
     const langIds = candidate.languages?.map(l => l.language_id) || [];
     
@@ -1063,7 +1065,6 @@ export const CandidateDetail = () => {
       skills: candidate.skills?.join(', ') || '',
       source: candidate.source || 'portal',
       notes: candidate.notes || '',
-      // Classification fields
       candidate_status: candidate.candidate_status || 'available',
       disqualification_reason: candidate.disqualification_reason || '',
       experience_range: candidate.experience_range || '',
@@ -1071,7 +1072,6 @@ export const CandidateDetail = () => {
       professional_area_ids: areaIds,
       language_ids: langIds
     });
-    loadCatalogs();
     setShowEditForm(true);
   };
 
