@@ -2273,7 +2273,8 @@ async def list_hirings(page: int = 1, limit: int = 20, empresa_id: Optional[str]
     if empresa_id:
         where += " AND empresa_id = ?"; params.append(empresa_id)
     total = await database.fetch_val(f"SELECT COUNT(*) FROM ATS_CONTRATACIONES {where}", tuple(params))
-    sql = database.paginate(f"SELECT * FROM ATS_CONTRATACIONES {where} ORDER BY created_at DESC", page, limit)
+    join_sql = f"SELECT h.*, e.name AS empresa_name FROM ATS_CONTRATACIONES h LEFT JOIN ATS_EMPRESAS e ON e.id = h.empresa_id {where} ORDER BY h.created_at DESC"
+    sql = database.paginate(join_sql, page, limit)
     rows = await database.fetch_all(sql, tuple(params))
     return {"total": total, "page": page, "limit": limit, "items": serialize_list(rows)}
 
