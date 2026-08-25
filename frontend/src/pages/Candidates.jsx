@@ -207,11 +207,12 @@ export const Candidates = () => {
         const token = getToken();
         const form = new FormData();
         form.append('file', cvFile);
-        await fetch(`${API_URL}/candidates/${res.id}/upload?file_type=cv`, {
+        const cvResp = await fetch(`${API_URL}/candidates/${res.id}/upload-cv`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
           body: form
         });
+        if (!cvResp.ok) console.error('Error subiendo CV:', await cvResp.text());
       }
 
       toast.success('Candidato creado');

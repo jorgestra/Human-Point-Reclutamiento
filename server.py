@@ -1368,15 +1368,14 @@ async def sync_candidate_areas(candidate_id: str, area_ids: List[str], user: dic
     cand = await database.fetch_one("SELECT id FROM ATS_CANDIDATOS WHERE id = ? AND tenant_id = ?", (candidate_id, user['tenant_id']))
     if not cand:
         raise HTTPException(status_code=404, detail="Candidato no encontrado")
-    ops = [("DELETE FROM ATS_CANDIDATO_AREAS WHERE candidate_id = ?", (candidate_id,))]
+    await database.execute("DELETE FROM ATS_CANDIDATO_AREAS WHERE candidate_id = ?", (candidate_id,))
     for area_id in area_ids:
         area = await database.fetch_one("SELECT id FROM ATS_AREAS_PROFESIONALES WHERE id = ? AND tenant_id = ?", (area_id, user['tenant_id']))
         if area:
-            ops.append((
+            await database.execute(
                 "INSERT INTO ATS_CANDIDATO_AREAS (id, candidate_id, professional_area_id, tenant_id, created_by) VALUES (?, ?, ?, ?, ?)",
                 (str(uuid.uuid4()), candidate_id, area_id, user['tenant_id'], user['id'])
-            ))
-    await database.execute_transaction(ops)
+            )
     return {"message": f"{len(area_ids)} áreas sincronizadas"}
 
 @api_router.delete("/candidates/{candidate_id}/areas/{rel_id}")
@@ -1409,15 +1408,14 @@ async def sync_candidate_languages(candidate_id: str, language_ids: List[str], u
     cand = await database.fetch_one("SELECT id FROM ATS_CANDIDATOS WHERE id = ? AND tenant_id = ?", (candidate_id, user['tenant_id']))
     if not cand:
         raise HTTPException(status_code=404, detail="Candidato no encontrado")
-    ops = [("DELETE FROM ATS_CANDIDATO_IDIOMAS WHERE candidate_id = ?", (candidate_id,))]
+    await database.execute("DELETE FROM ATS_CANDIDATO_IDIOMAS WHERE candidate_id = ?", (candidate_id,))
     for lang_id in language_ids:
         lang = await database.fetch_one("SELECT id FROM ATS_IDIOMAS WHERE id = ? AND tenant_id = ?", (lang_id, user['tenant_id']))
         if lang:
-            ops.append((
+            await database.execute(
                 "INSERT INTO ATS_CANDIDATO_IDIOMAS (id, candidate_id, language_id, tenant_id, created_by) VALUES (?, ?, ?, ?, ?)",
                 (str(uuid.uuid4()), candidate_id, lang_id, user['tenant_id'], user['id'])
-            ))
-    await database.execute_transaction(ops)
+            )
     return {"message": f"{len(language_ids)} idiomas sincronizados"}
 
 @api_router.delete("/candidates/{candidate_id}/languages/{rel_id}")
@@ -1989,11 +1987,25 @@ async def upload_interview_document(
     (upload_dir / f"{file_id}{ext}").write_bytes(content)
     file_url = f"/api/interviews/{interview_id}/files/{file_id}"
 
-    await database.execute(
-        """INSERT INTO ATS_CANDIDATOS_DOCUMENTOS (id, candidate_id, document_type, document_name, file_url, uploaded_by)
-           VALUES (?, ?, ?, ?, ?, ?)""",
-        (file_id, interview_id, document_type, file.filename or f'documento{ext}', file_url, user['id'])
+    # Obtener candidate_id real desde la entrevista->aplicación
+    interview_full = await database.fetch_one(
+        "SELECT application_id FROM ATS_ENTREVISTAS WHERE id = ?", (interview_id,)
     )
+    candidate_id_for_doc = None
+    if interview_full and interview_full.get('application_id'):
+        app = await database.fetch_one(
+            "SELECT candidate_id FROM ATS_APLICACIONES WHERE id = ?",
+            (interview_full['application_id'],)
+        )
+        if app:
+            candidate_id_for_doc = app['candidate_id']
+
+    if candidate_id_for_doc:
+        await database.execute(
+            """INSERT INTO ATS_CANDIDATOS_DOCUMENTOS (id, candidate_id, document_type, document_name, file_url, uploaded_by)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (file_id, candidate_id_for_doc, document_type, file.filename or f'documento{ext}', file_url, user['id'])
+        )
     return {"message": "Archivo subido", "file_id": file_id, "url": file_url}
 
 @api_router.get("/interviews/{interview_id}/files/{file_id}")
