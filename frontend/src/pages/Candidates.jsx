@@ -1046,7 +1046,7 @@ export const CandidateDetail = () => {
 
   const handleEdit = () => {
     // Extract IDs from relational data
-    const areaIds = candidate.professional_areas?.map(a => a.area_id) || [];
+    const areaIds = candidate.professional_areas?.map(a => a.professional_area_id || a.area_id) || [];
     const langIds = candidate.languages?.map(l => l.language_id) || [];
     
     setEditFormData({
