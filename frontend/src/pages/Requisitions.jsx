@@ -407,7 +407,7 @@ useEffect(() => {
                               </>
                             )}
                             {req.status === 'approved' && !req.vacancy_id && (
-                              <DropdownMenuItem onClick={() => navigate(`/vacancies/new?requisition=${req.id}`)}>
+                              <DropdownMenuItem onClick={() => navigate(`/vacancies?new=true&requisition=${req.id}`)}>
                                 <FileText className="mr-2 h-4 w-4" />
                                 Crear Vacante
                               </DropdownMenuItem>

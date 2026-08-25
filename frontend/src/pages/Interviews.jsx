@@ -360,10 +360,11 @@ export const Interviews = () => {
   const handleSaveEdit = async () => {
     if (!selectedInterview || !editForm) return;
     try {
-      const scheduledAt = new Date(`${editForm.scheduled_date}T${editForm.scheduled_time}:00`);
+      // Construir ISO string directo sin conversión de timezone
+      const scheduledAt = `${editForm.scheduled_date}T${editForm.scheduled_time}:00.000Z`;
       const payload = {
         application_id: selectedInterview.application_id,
-        scheduled_at: scheduledAt.toISOString(),
+        scheduled_at: scheduledAt,
         duration_minutes: parseInt(editForm.duration_minutes),
         interview_type: editForm.interview_type,
         location: editForm.location,
@@ -501,10 +502,12 @@ export const Interviews = () => {
                   <Eye className="mr-2 h-4 w-4" />
                   Ver Entrevista
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleEditInterview(interview)} data-testid={`edit-interview-${interview.id}`}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  Editar Entrevista
-                </DropdownMenuItem>
+                {interview.status === 'scheduled' && (
+                  <DropdownMenuItem onClick={() => handleEditInterview(interview)} data-testid={`edit-interview-${interview.id}`}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    Editar Entrevista
+                  </DropdownMenuItem>
+                )}
                 {interview.status === 'scheduled' && (
                   <DropdownMenuItem onClick={() => openCompleteDialog(interview.id)} data-testid={`complete-interview-${interview.id}`}>
                     <CheckCircle className="mr-2 h-4 w-4 text-green-600" />

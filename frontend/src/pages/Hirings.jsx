@@ -60,6 +60,8 @@ export const Hirings = () => {
 
   const [formData, setFormData] = useState(initialFormState);
 
+  const [companies, setCompanies] = useState([]);
+
   const loadHirings = async () => {
     try {
       const data = await apiRequest('/hirings');
@@ -215,6 +217,7 @@ useEffect(() => {
               <TableRow>
                 <SortHeader label="No. Empleado" field="employee_number" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
                 <SortHeader label="Posición" field="position" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortHeader label="Empresa" field="empresa_id" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
                 <SortHeader label="Departamento" field="department" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
                 <SortHeader label="Salario" field="salary" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
                 <SortHeader label="Fecha Ingreso" field="start_date" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
@@ -224,13 +227,13 @@ useEffect(() => {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
+                  <TableCell colSpan={7} className="text-center py-8">
                     <div className="w-6 h-6 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto" />
                   </TableCell>
                 </TableRow>
               ) : hirings.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-slate-400">
+                  <TableCell colSpan={7} className="text-center py-8 text-slate-400">
                     No hay contrataciones registradas
                   </TableCell>
                 </TableRow>
@@ -246,6 +249,12 @@ useEffect(() => {
                       <div className="flex items-center gap-2">
                         <Briefcase size={14} className="text-slate-400" />
                         {hiring.position}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Building2 size={14} className="text-slate-400" />
+                        {companies.find(c => c.id === hiring.empresa_id)?.name || hiring.empresa_name || '-'}
                       </div>
                     </TableCell>
                     <TableCell>
