@@ -1112,10 +1112,20 @@ async def advanced_search(
     for r in rows:
         d = serialize_doc(r)
         d['skills'] = await database.get_candidate_skills(d['id'])
+        if d.get('professional_level_id'):
+            lvl = await database.fetch_one("SELECT name FROM ATS_NIVELES_PROFESIONALES WHERE id = ?", (d['professional_level_id'],))
+            d['professional_level_name'] = lvl['name'] if lvl else None
         areas = await database.get_candidate_areas(d['id'])
         d['professional_areas'] = [{"id": a['professional_area_id'], "name": a['area_name']} for a in areas]
+        d['professional_areas_text'] = ', '.join([a['area_name'] for a in areas if a.get('area_name')])
         langs = await database.get_candidate_languages(d['id'])
         d['languages'] = [{"id": l['language_id'], "name": l['language_name'], "level": l['language_level']} for l in langs]
+        d['languages_text'] = ', '.join([l['language_name'] for l in langs if l.get('language_name')])
+        last_exp = await database.fetch_one(
+            "SELECT TOP 1 position, company FROM ATS_CANDIDATOS_EXPERIENCIA WHERE candidate_id = ? ORDER BY is_current DESC, start_date DESC",
+            (d['id'],)
+        )
+        d['last_position'] = f"{last_exp['position']} en {last_exp['company']}" if last_exp else None
         result.append(d)
     return {"total": total, "page": page, "limit": limit, "items": result}
 

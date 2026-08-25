@@ -156,6 +156,186 @@ const CatalogManager = ({
   );
 };
 
+// ============ USERS MANAGER COMPONENT ============
+const UsersManager = () => {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState({
+    first_name: '', last_name: '', email: '', password: '',
+    role: 'recruiter', department: ''
+  });
+
+  const ROLES = [
+    { value: 'admin', label: 'Administrador' },
+    { value: 'recruiter', label: 'Reclutador' },
+    { value: 'hiring_manager', label: 'Hiring Manager' },
+    { value: 'viewer', label: 'Visor' }
+  ];
+
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      const data = await apiRequest('/users');
+      setUsers(data || []);
+    } catch (error) {
+      toast.error('Error al cargar usuarios');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadUsers(); }, []);
+
+  const handleCreate = async () => {
+    if (!formData.first_name || !formData.email || !formData.password) {
+      toast.error('Nombre, correo y contraseña son requeridos');
+      return;
+    }
+    try {
+      await apiRequest('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({ ...formData, tenant_id: 'default' })
+      });
+      toast.success('Usuario creado exitosamente');
+      setShowForm(false);
+      setFormData({ first_name: '', last_name: '', email: '', password: '', role: 'recruiter', department: '' });
+      loadUsers();
+    } catch (error) {
+      toast.error(error.message || 'Error al crear usuario');
+    }
+  };
+
+  const handleToggleActive = async (u) => {
+    try {
+      const endpoint = u.is_active ? `/users/${u.id}/deactivate` : `/users/${u.id}/activate`;
+      await apiRequest(endpoint, { method: 'PUT' });
+      toast.success(u.is_active ? 'Usuario desactivado' : 'Usuario activado');
+      loadUsers();
+    } catch (error) {
+      toast.error(error.message || 'Error');
+    }
+  };
+
+  const handleChangeRole = async (userId, newRole) => {
+    try {
+      await apiRequest(`/users/${userId}/role`, { method: 'PUT', body: JSON.stringify({ role: newRole }) });
+      toast.success('Rol actualizado');
+      loadUsers();
+    } catch (error) {
+      toast.error(error.message || 'Error al cambiar rol');
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-semibold text-slate-900">Gestión de Usuarios</h3>
+          <p className="text-sm text-slate-500">Administra los usuarios que tienen acceso al sistema</p>
+        </div>
+        <Button onClick={() => setShowForm(true)} className="bg-slate-900 hover:bg-slate-800" size="sm">
+          <UserPlus size={14} className="mr-2" /> Nuevo Usuario
+        </Button>
+      </div>
+      <Card className="border-slate-200">
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Correo</TableHead>
+                <TableHead>Rol</TableHead>
+                <TableHead>Departamento</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead className="w-[80px]"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow><TableCell colSpan={6} className="text-center py-8">
+                  <div className="w-6 h-6 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                </TableCell></TableRow>
+              ) : users.length === 0 ? (
+                <TableRow><TableCell colSpan={6} className="text-center py-8 text-slate-400">No hay usuarios</TableCell></TableRow>
+              ) : users.map(u => (
+                <TableRow key={u.id} className={!u.is_active ? 'opacity-50' : ''}>
+                  <TableCell><div className="font-medium">{u.first_name} {u.last_name}</div></TableCell>
+                  <TableCell className="text-slate-600 text-sm">{u.email}</TableCell>
+                  <TableCell>
+                    <Select value={u.role} onValueChange={(v) => handleChangeRole(u.id, v)}>
+                      <SelectTrigger className="h-7 text-xs w-36"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {ROLES.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell className="text-sm text-slate-600">{u.department || '-'}</TableCell>
+                  <TableCell>
+                    <Badge className={u.is_active ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-500'}>
+                      {u.is_active ? 'Activo' : 'Inactivo'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="sm" onClick={() => handleToggleActive(u)}
+                      className={u.is_active ? 'text-red-500 hover:text-red-700' : 'text-green-600 hover:text-green-700'}>
+                      {u.is_active ? <Lock size={14} /> : <Check size={14} />}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Nuevo Usuario</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Nombre *</Label>
+                <Input value={formData.first_name} onChange={e => setFormData({...formData, first_name: e.target.value})} placeholder="Juan" />
+              </div>
+              <div className="space-y-1">
+                <Label>Apellido</Label>
+                <Input value={formData.last_name} onChange={e => setFormData({...formData, last_name: e.target.value})} placeholder="Pérez" />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Correo *</Label>
+              <Input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="correo@empresa.com" />
+            </div>
+            <div className="space-y-1">
+              <Label>Contraseña *</Label>
+              <Input type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} placeholder="Mínimo 6 caracteres" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Rol</Label>
+                <Select value={formData.role} onValueChange={v => setFormData({...formData, role: v})}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{ROLES.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Departamento</Label>
+                <Input value={formData.department} onChange={e => setFormData({...formData, department: e.target.value})} placeholder="Ej: RH" />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button>
+            <Button onClick={handleCreate} className="bg-slate-900 hover:bg-slate-800">
+              <UserPlus size={14} className="mr-2" /> Crear Usuario
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('companies');
   
@@ -774,7 +954,6 @@ export default function Settings() {
             )}
           />
         </TabsContent>
-
 
         {/* Usuarios Tab */}
         <TabsContent value="usuarios" className="mt-6">
