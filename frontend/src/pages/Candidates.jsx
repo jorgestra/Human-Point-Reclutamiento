@@ -1098,7 +1098,7 @@ export const CandidateDetail = () => {
       if (editFormData.professional_area_ids) {
         await apiRequest(`/candidates/${id}/areas/sync`, { 
           method: 'PUT', 
-          body: JSON.stringify(editFormData.professional_area_ids)
+          body: JSON.stringify({ ids: editFormData.professional_area_ids })
         });
       }
       
@@ -1106,7 +1106,7 @@ export const CandidateDetail = () => {
       if (editFormData.language_ids) {
         await apiRequest(`/candidates/${id}/languages/sync`, { 
           method: 'PUT', 
-          body: JSON.stringify(editFormData.language_ids)
+          body: JSON.stringify({ ids: editFormData.language_ids })
         });
       }
       
