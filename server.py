@@ -3314,6 +3314,24 @@ async def startup():
         )
     """)
     # Insertar tenant por defecto si no existe
+    # Agregar columnas faltantes si la tabla ya existía sin ellas
+    for col, definition in [
+        ('logo_url', 'NVARCHAR(500)'),
+        ('logo_stored_path', 'NVARCHAR(500)'),
+        ('primary_color', "NVARCHAR(20) DEFAULT '#004aad'"),
+        ('secondary_color', "NVARCHAR(20) DEFAULT '#38b6ff'"),
+        ('short_name', 'NVARCHAR(100)'),
+        ('website', 'NVARCHAR(200)'),
+        ('industry', 'NVARCHAR(100)'),
+        ('updated_at', 'DATETIME DEFAULT GETUTCDATE()'),
+    ]:
+        try:
+            await database.execute(f"""
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ATS_TENANTS') AND name = '{col}')
+                ALTER TABLE ATS_TENANTS ADD {col} {definition}
+            """)
+        except Exception: pass
+
     default_tenant = await database.fetch_one("SELECT id FROM ATS_TENANTS WHERE id = 'default'")
     if not default_tenant:
         await database.execute(
