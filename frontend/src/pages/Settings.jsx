@@ -156,6 +156,179 @@ const CatalogManager = ({
   );
 };
 
+// ============ TENANT CONFIG MANAGER ============
+const TenantConfigManager = () => {
+  const [config, setConfig] = useState({ name: '', short_name: '', primary_color: '#004aad', secondary_color: '#38b6ff', website: '', industry: '' });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
+  const logoInputRef = React.useRef(null);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const data = await apiRequest('/tenant/config');
+        if (data) {
+          setConfig({
+            name: data.name || '',
+            short_name: data.short_name || '',
+            primary_color: data.primary_color || '#004aad',
+            secondary_color: data.secondary_color || '#38b6ff',
+            website: data.website || '',
+            industry: data.industry || ''
+          });
+          if (data.logo_url) {
+            setLogoPreview(`${process.env.REACT_APP_BACKEND_URL}${data.logo_url}`);
+          }
+        }
+      } catch {}
+      setLoading(false);
+    };
+    load();
+  }, []);
+
+  const handleLogoChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setLogoFile(file);
+    setLogoPreview(URL.createObjectURL(file));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      // Subir logo si hay uno nuevo
+      if (logoFile) {
+        const token = localStorage.getItem('ats_token');
+        const form = new FormData();
+        form.append('file', logoFile);
+        const resp = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/tenant/logo`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: form
+        });
+        if (!resp.ok) throw new Error('Error subiendo logo');
+      }
+      // Guardar config
+      const updated = await apiRequest('/tenant/config', { method: 'PUT', body: JSON.stringify(config) });
+      localStorage.setItem('tenant_config', JSON.stringify(updated));
+      toast.success('Configuración guardada');
+      setLogoFile(null);
+    } catch (error) {
+      toast.error(error.message || 'Error al guardar');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" /></div>;
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      <div>
+        <h3 className="font-semibold text-slate-900">Configuración de la Empresa</h3>
+        <p className="text-sm text-slate-500">Esta información aparecerá en el sistema, reportes y documentos generados.</p>
+      </div>
+
+      {/* Logo */}
+      <Card className="border-slate-200">
+        <CardContent className="p-6">
+          <Label className="text-sm font-medium">Logo de la Empresa</Label>
+          <div className="flex items-center gap-6 mt-3">
+            <div className="w-24 h-24 rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden bg-slate-50 cursor-pointer hover:border-cyan-400 transition-colors"
+              onClick={() => logoInputRef.current?.click()}>
+              {logoPreview ? (
+                <img src={logoPreview} alt="Logo" className="w-full h-full object-contain p-2" />
+              ) : (
+                <div className="text-center">
+                  <Plus size={24} className="text-slate-400 mx-auto" />
+                  <p className="text-xs text-slate-400 mt-1">Subir logo</p>
+                </div>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Button variant="outline" size="sm" onClick={() => logoInputRef.current?.click()}>
+                {logoPreview ? 'Cambiar logo' : 'Seleccionar logo'}
+              </Button>
+              <p className="text-xs text-slate-400">PNG, JPG o SVG. Máx 2MB.</p>
+              {logoFile && <p className="text-xs text-cyan-600">✓ {logoFile.name} listo para guardar</p>}
+            </div>
+          </div>
+          <input ref={logoInputRef} type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" className="hidden" onChange={handleLogoChange} />
+        </CardContent>
+      </Card>
+
+      {/* Datos básicos */}
+      <Card className="border-slate-200">
+        <CardContent className="p-6 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <Label>Nombre de la Empresa *</Label>
+              <Input value={config.name} onChange={e => setConfig({...config, name: e.target.value})} placeholder="Ej: Grupo Empresarial XYZ" />
+            </div>
+            <div className="space-y-1">
+              <Label>Nombre Corto / Siglas</Label>
+              <Input value={config.short_name} onChange={e => setConfig({...config, short_name: e.target.value})} placeholder="Ej: GEX" maxLength={10} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <Label>Sitio Web</Label>
+              <Input value={config.website} onChange={e => setConfig({...config, website: e.target.value})} placeholder="https://empresa.com" />
+            </div>
+            <div className="space-y-1">
+              <Label>Industria</Label>
+              <Input value={config.industry} onChange={e => setConfig({...config, industry: e.target.value})} placeholder="Ej: Manufactura, Retail, Tech" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <Label>Color Primario</Label>
+              <div className="flex items-center gap-2">
+                <input type="color" value={config.primary_color} onChange={e => setConfig({...config, primary_color: e.target.value})} className="w-10 h-9 rounded border border-slate-300 cursor-pointer p-0.5" />
+                <Input value={config.primary_color} onChange={e => setConfig({...config, primary_color: e.target.value})} className="font-mono text-sm" maxLength={7} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Color Secundario</Label>
+              <div className="flex items-center gap-2">
+                <input type="color" value={config.secondary_color} onChange={e => setConfig({...config, secondary_color: e.target.value})} className="w-10 h-9 rounded border border-slate-300 cursor-pointer p-0.5" />
+                <Input value={config.secondary_color} onChange={e => setConfig({...config, secondary_color: e.target.value})} className="font-mono text-sm" maxLength={7} />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Preview */}
+      <Card className="border-slate-200">
+        <CardContent className="p-4">
+          <Label className="text-sm font-medium mb-3 block">Vista Previa del Sidebar</Label>
+          <div className="w-48 bg-slate-900 rounded-xl p-3 flex items-center gap-2">
+            {logoPreview ? (
+              <img src={logoPreview} alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-white p-0.5" />
+            ) : (
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: `linear-gradient(135deg, ${config.primary_color}, ${config.secondary_color})` }}>
+                <span className="text-white font-bold text-sm">{(config.short_name || config.name || 'HP').slice(0,2).toUpperCase()}</span>
+              </div>
+            )}
+            <div>
+              <p className="text-white font-bold text-xs leading-none">{config.name || 'Mi Empresa'}</p>
+              <p className="text-slate-400 text-xs mt-0.5">Reclutamiento</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Button onClick={handleSave} disabled={saving} className="bg-slate-900 hover:bg-slate-800">
+        {saving ? 'Guardando...' : 'Guardar Configuración'}
+      </Button>
+    </div>
+  );
+};
+
 // ============ USERS MANAGER COMPONENT ============
 const UsersManager = () => {
   const [users, setUsers] = useState([]);
@@ -590,6 +763,10 @@ export default function Settings() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid grid-cols-5 w-full max-w-3xl">
+          <TabsTrigger value="mi-empresa" className="flex items-center gap-1.5" data-testid="tab-mi-empresa">
+            <Building2 size={14} />
+            <span className="hidden sm:inline">Mi Empresa</span>
+          </TabsTrigger>
           <TabsTrigger value="companies" className="flex items-center gap-1.5" data-testid="tab-companies">
             <Building2 size={14} />
             <span className="hidden sm:inline">Empresas</span>
@@ -623,6 +800,11 @@ export default function Settings() {
             <span className="hidden sm:inline">Pipeline</span>
           </TabsTrigger>
         </TabsList>
+
+        {/* Mi Empresa Tab */}
+        <TabsContent value="mi-empresa" className="mt-6">
+          <TenantConfigManager />
+        </TabsContent>
 
         {/* Companies Tab */}
         <TabsContent value="companies" className="mt-6">
