@@ -1497,35 +1497,47 @@ async def get_candidate_interviews(candidate_id: str, user: dict = Depends(get_c
 
 
 # ============ TENANT CONFIG ============
-@api_router.get("/tenant/config")
-async def get_tenant_config(user: dict = Depends(get_current_user)):
-    row = await database.fetch_one(
-        "SELECT * FROM ATS_TENANTS WHERE id = ?", (user['tenant_id'],)
-    )
-    if not row:
-        return {"id": user['tenant_id'], "name": "Human Point", "short_name": "HP",
-                "logo_url": None, "primary_color": "#004aad", "secondary_color": "#38b6ff"}
-    return serialize_doc(row)
-
 @api_router.put("/tenant/config")
 async def update_tenant_config(data: dict, user: dict = Depends(check_role([UserRole.ADMIN]))):
     tid = user['tenant_id']
     existing = await database.fetch_one("SELECT id FROM ATS_TENANTS WHERE id = ?", (tid,))
     if existing:
-        await database.execute(
-            """UPDATE ATS_TENANTS SET name=?, short_name=?, primary_color=?, secondary_color=?,
-               website=?, industry=?, updated_at=GETUTCDATE() WHERE id = ?""",
-            (data.get('name'), data.get('short_name'), data.get('primary_color', '#004aad'),
-             data.get('secondary_color', '#38b6ff'), data.get('website'), data.get('industry'), tid)
+        cols_info = await database.fetch_all(
+            "SELECT name FROM sys.columns WHERE object_id = OBJECT_ID('ATS_TENANTS')"
         )
+        existing_cols = {c['name'] for c in cols_info}
+        col_map = [
+            ('company_name', data.get('name')),
+            ('name', data.get('name')),
+            ('short_name', data.get('short_name')),
+            ('primary_color', data.get('primary_color', '#004aad')),
+            ('secondary_color', data.get('secondary_color', '#38b6ff')),
+            ('website', data.get('website')),
+            ('industry', data.get('industry')),
+        ]
+        seen = set()
+        update_pairs = []
+        update_vals = []
+        for col, val in col_map:
+            if col in existing_cols and col not in seen:
+                seen.add(col)
+                update_pairs.append(f"{col}=?")
+                update_vals.append(val)
+        if update_pairs:
+            update_vals.append(tid)
+            await database.execute(
+                f"UPDATE ATS_TENANTS SET {', '.join(update_pairs)} WHERE id = ?",
+                tuple(update_vals)
+            )
     else:
         await database.execute(
-            """INSERT INTO ATS_TENANTS (id, name, short_name, primary_color, secondary_color, website, industry)
+            """INSERT INTO ATS_TENANTS (id, company_name, short_name, primary_color, secondary_color, website, industry)
                VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (tid, data.get('name'), data.get('short_name'), data.get('primary_color', '#004aad'),
              data.get('secondary_color', '#38b6ff'), data.get('website'), data.get('industry'))
         )
-    return await database.fetch_one("SELECT * FROM ATS_TENANTS WHERE id = ?", (tid,))
+    row = await database.fetch_one("SELECT * FROM ATS_TENANTS WHERE id = ?", (tid,))
+    return serialize_doc(row) if row else {}
 
 @api_router.post("/tenant/logo")
 async def upload_tenant_logo(
