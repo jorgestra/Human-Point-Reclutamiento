@@ -66,7 +66,7 @@ export const Login = () => {
       >
         <div
           className="absolute inset-0"
-          style={{ background: 'linear-gradient(160deg, rgba(3,9,64,0.93) 0%, rgba(0,74,173,0.78) 60%, rgba(56,182,255,0.45) 100%)' }}
+          style={{ background: 'linear-gradient(160deg, rgba(3,9,64,0.80) 0%, rgba(0,74,173,0.60) 60%, rgba(56,182,255,0.30) 100%)' }}
         />
 
         <div className="relative z-10 p-12 flex flex-col justify-between w-full">
@@ -74,15 +74,15 @@ export const Login = () => {
           {/* Logo grande */}
           <div className="flex flex-col gap-3" data-testid="login-logo">
             <div style={{
-              background: 'rgba(255,255,255,0.12)',
-              borderRadius: 20,
-              padding: 16,
+              background: 'rgba(255,255,255,0.25)',
+              borderRadius: 24,
+              padding: 20,
               display: 'inline-flex',
-              backdropFilter: 'blur(12px)',
-              border: '1px solid rgba(255,255,255,0.2)',
+              backdropFilter: 'blur(16px)',
+              border: '1px solid rgba(255,255,255,0.35)',
               width: 'fit-content'
             }}>
-              <HumanPointLogo width={80} height={80} />
+              <HumanPointLogo width={110} height={110} />
             </div>
             <div>
               <p className="text-white font-bold text-2xl leading-none">Human Point</p>
