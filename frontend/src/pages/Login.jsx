@@ -53,14 +53,19 @@ export const Login = () => {
       >
         <div className="absolute inset-0" style={{ background: 'linear-gradient(160deg, rgba(3,9,64,0.88) 0%, rgba(0,74,173,0.70) 60%, rgba(56,182,255,0.35) 100%)' }} />
 
-        <div className="relative z-10 p-12 flex flex-col justify-between w-full">
+        <div className="relative z-10 p-8 flex flex-col justify-between w-full h-full">
 
           {/* Logo Human Point grande arriba */}
-          <div data-testid="login-logo">
+          <div data-testid="login-logo" style={{ paddingTop: '8px' }}>
             <img
               src="/human-point-logo.png"
               alt="Human Point"
-              style={{ width: 280, height: 'auto', filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.5))' }}
+              style={{ 
+                width: '65%', 
+                maxWidth: 340,
+                height: 'auto',
+                imageRendering: 'crisp-edges'
+              }}
             />
           </div>
 
