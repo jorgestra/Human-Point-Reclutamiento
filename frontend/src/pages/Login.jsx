@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { Eye, EyeOff } from 'lucide-react';
 
 const BG_IMAGE = "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?auto=format&fit=crop&q=80&w=2070";
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://human-point-reclutamiento-production.up.railway.app';
 
 export const Login = () => {
   const navigate = useNavigate();
@@ -16,6 +17,14 @@ export const Login = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loginData, setLoginData] = useState({ email: '', password: '' });
+  const [clientLogo, setClientLogo] = useState(null);
+
+  useEffect(() => {
+    fetch(`${BACKEND_URL}/api/tenant/public-config?tenant_id=default`)
+      .then(r => r.json())
+      .then(d => { if (d.logo_url) setClientLogo(`${BACKEND_URL}${d.logo_url}`); })
+      .catch(() => {});
+  }, []);
 
   if (user) return <Navigate to="/dashboard" replace />;
 
@@ -33,44 +42,29 @@ export const Login = () => {
     }
   };
 
-  // Cargar logo del cliente desde tenant_config
-  let clientLogoUrl = null;
-  try {
-    const tc = JSON.parse(localStorage.getItem('tenant_config') || '{}');
-    if (tc.logo_url) {
-      const backendUrl = process.env.REACT_APP_BACKEND_URL || 'https://human-point-reclutamiento-production.up.railway.app';
-      clientLogoUrl = `${backendUrl}${tc.logo_url}`;
-    }
-  } catch {}
-
   return (
     <div className="min-h-screen flex" data-testid="login-page">
 
       {/* Panel izquierdo */}
       <div
         className="hidden lg:flex lg:w-1/2 relative bg-slate-900"
-        style={{ backgroundImage: `url(${BG_IMAGE})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+        style={{ backgroundImage: `url(${BG_IMAGE})`, backgroundSize: 'cover', backgroundPosition: 'center top' }}
       >
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(160deg, rgba(3,9,64,0.88) 0%, rgba(0,74,173,0.70) 60%, rgba(56,182,255,0.35) 100%)' }} />
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(160deg, rgba(3,9,64,0.85) 0%, rgba(0,74,173,0.65) 60%, rgba(56,182,255,0.30) 100%)' }} />
 
         <div className="relative z-10 p-8 flex flex-col justify-between w-full h-full">
 
-          {/* Logo Human Point grande arriba */}
-          <div data-testid="login-logo" style={{ paddingTop: '8px' }}>
+          {/* Logo Human Point */}
+          <div data-testid="login-logo">
             <img
               src="/human-point-logo.png"
               alt="Human Point"
-              style={{ 
-                width: '65%', 
-                maxWidth: 340,
-                height: 'auto',
-                imageRendering: 'crisp-edges'
-              }}
+              style={{ width: '70%', maxWidth: 360, height: 'auto' }}
             />
           </div>
 
           {/* Tagline */}
-          <div className="space-y-2">
+          <div className="space-y-1 pb-8">
             <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight">
               Human Point —
             </h1>
@@ -80,11 +74,10 @@ export const Login = () => {
             <h1 className="text-4xl lg:text-5xl font-bold leading-tight" style={{ color: '#38b6ff' }}>
               y selección
             </h1>
+            <p className="text-slate-400 text-sm pt-4">
+              © 2026 Human Point · ITligencia. Todos los derechos reservados.
+            </p>
           </div>
-
-          <p className="text-slate-400 text-sm">
-            © 2026 Human Point · ITligencia. Todos los derechos reservados.
-          </p>
         </div>
       </div>
 
@@ -99,15 +92,18 @@ export const Login = () => {
 
           <Card className="border-0 shadow-xl">
             <CardHeader className="space-y-3 pb-4">
-              {/* Logo del cliente arriba de Bienvenido */}
-              {clientLogoUrl && (
+              {/* Logo del cliente */}
+              {clientLogo && (
                 <div className="flex justify-center pt-2">
-                  <img src={clientLogoUrl} alt="Cliente" style={{ height: 48, maxWidth: 160, objectFit: 'contain' }} />
+                  <img
+                    src={clientLogo}
+                    alt="Cliente"
+                    style={{ height: 52, maxWidth: 180, objectFit: 'contain' }}
+                    onError={(e) => { e.target.style.display = 'none'; }}
+                  />
                 </div>
               )}
-              <CardTitle className="text-2xl font-bold text-center">
-                Bienvenido
-              </CardTitle>
+              <CardTitle className="text-2xl font-bold text-center">Bienvenido</CardTitle>
               <CardDescription className="text-center">
                 Accede a tu cuenta de Human Point ATS
               </CardDescription>

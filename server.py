@@ -1510,6 +1510,19 @@ async def get_tenant_config(user: dict = Depends(get_current_user)):
         d['name'] = d['company_name']
     return d
 
+@api_router.get("/tenant/public-config")
+async def get_tenant_public_config(tenant_id: str = "default"):
+    """Endpoint público — no requiere auth. Usado en pantalla de login."""
+    row = await database.fetch_one(
+        "SELECT * FROM ATS_TENANTS WHERE id = ?", (tenant_id,)
+    )
+    if not row:
+        return {"name": "Human Point", "logo_url": None, "primary_color": "#004aad"}
+    d = serialize_doc(row)
+    if not d.get('name') and d.get('company_name'):
+        d['name'] = d['company_name']
+    return {"name": d.get('name'), "logo_url": d.get('logo_url'), "primary_color": d.get('primary_color', '#004aad')}
+
 @api_router.put("/tenant/config")
 async def update_tenant_config(data: dict, user: dict = Depends(check_role([UserRole.ADMIN]))):
     tid = user['tenant_id']
