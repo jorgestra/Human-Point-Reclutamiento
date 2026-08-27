@@ -47,24 +47,25 @@ export const Login = () => {
 
       {/* Panel izquierdo */}
       <div
-        className="hidden lg:flex lg:w-1/2 relative bg-slate-900"
+        className="hidden lg:block lg:w-1/2 relative bg-slate-900"
         style={{ backgroundImage: `url(${BG_IMAGE})`, backgroundSize: 'cover', backgroundPosition: 'center top' }}
       >
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(160deg, rgba(3,9,64,0.85) 0%, rgba(0,74,173,0.65) 60%, rgba(56,182,255,0.30) 100%)' }} />
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(160deg, rgba(3,9,64,0.88) 0%, rgba(0,74,173,0.70) 60%, rgba(56,182,255,0.35) 100%)' }} />
 
-        <div className="relative z-10 p-8 flex flex-col justify-between w-full h-full">
+        {/* Contenido — todo en flujo normal, logo primero */}
+        <div className="relative z-10 p-8">
 
-          {/* Logo Human Point */}
-          <div data-testid="login-logo">
+          {/* Logo arriba del todo */}
+          <div data-testid="login-logo" style={{ marginBottom: 'auto' }}>
             <img
               src="/human-point-logo.svg"
               alt="Human Point"
-              style={{ width: '70%', maxWidth: 360, height: 'auto' }}
+              style={{ width: '60%', maxWidth: 320, height: 'auto' }}
             />
           </div>
 
-          {/* Tagline */}
-          <div className="space-y-1 pb-8">
+          {/* Tagline al fondo */}
+          <div style={{ position: 'absolute', bottom: 48, left: 32, right: 32 }}>
             <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight">
               Human Point —
             </h1>
@@ -74,7 +75,7 @@ export const Login = () => {
             <h1 className="text-4xl lg:text-5xl font-bold leading-tight" style={{ color: '#38b6ff' }}>
               y selección
             </h1>
-            <p className="text-slate-400 text-sm pt-4">
+            <p className="text-slate-400 text-sm mt-4">
               © 2026 Human Point · ITligencia. Todos los derechos reservados.
             </p>
           </div>
