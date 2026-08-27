@@ -1573,41 +1573,45 @@ async def upload_tenant_logo(
     allowed = {'image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'}
     if file.content_type not in allowed:
         raise HTTPException(status_code=400, detail="Solo se permiten PNG, JPG, SVG o WEBP")
-    content = await file.read()
-    if len(content) > 2 * 1024 * 1024:
+    file_bytes = await file.read()
+    if len(file_bytes) > 2 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="Logo muy grande (máx 2MB)")
-    upload_dir = ROOT_DIR / "uploads" / "logos"
-    upload_dir.mkdir(parents=True, exist_ok=True)
-    ext = file.filename.rsplit('.', 1)[-1] if '.' in file.filename else 'png'
-    file_id = f"logo_{user['tenant_id']}.{ext}"
-    (upload_dir / file_id).write_bytes(content)
-    logo_url = f"/api/tenant/logo/{file_id}"
+    import base64
+    logo_b64 = base64.b64encode(file_bytes).decode('utf-8')
+    mime_type = file.content_type
+    logo_url = f"/api/tenant/logo/{user['tenant_id']}"
     tid = user['tenant_id']
     existing = await database.fetch_one("SELECT id FROM ATS_TENANTS WHERE id = ?", (tid,))
     if existing:
-        await database.execute(
-            "UPDATE ATS_TENANTS SET logo_url=?, logo_stored_path=?, updated_at=GETUTCDATE() WHERE id = ?",
-            (logo_url, str(upload_dir / file_id), tid)
-        )
+        try:
+            await database.execute(
+                "UPDATE ATS_TENANTS SET logo_url=?, logo_data=?, logo_mime_type=?, updated_at=GETUTCDATE() WHERE id = ?",
+                (logo_url, logo_b64, mime_type, tid)
+            )
+        except Exception:
+            await database.execute(
+                "UPDATE ATS_TENANTS SET logo_url=?, logo_data=?, logo_mime_type=? WHERE id = ?",
+                (logo_url, logo_b64, mime_type, tid)
+            )
     else:
         await database.execute(
-            "INSERT INTO ATS_TENANTS (id, name, logo_url, logo_stored_path) VALUES (?, ?, ?, ?)",
-            (tid, 'Mi Empresa', logo_url, str(upload_dir / file_id))
+            "INSERT INTO ATS_TENANTS (id, name, logo_url, logo_data, logo_mime_type) VALUES (?, ?, ?, ?, ?)",
+            (tid, 'Mi Empresa', logo_url, logo_b64, mime_type)
         )
     return {"logo_url": logo_url}
 
-@api_router.get("/tenant/logo/{file_id}")
-async def get_tenant_logo(file_id: str):
-    upload_dir = ROOT_DIR / "uploads" / "logos"
-    for f in upload_dir.iterdir():
-        if f.name == file_id:
-            media_types = {
-                '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
-                '.svg': 'image/svg+xml', '.webp': 'image/webp'
-            }
-            ext = f.suffix.lower()
-            return FileResponse(str(f), media_type=media_types.get(ext, 'image/png'))
-    raise HTTPException(status_code=404, detail="Logo no encontrado")
+@api_router.get("/tenant/logo/{tenant_id}")
+async def get_tenant_logo(tenant_id: str):
+    import base64
+    from fastapi.responses import Response
+    row = await database.fetch_one(
+        "SELECT logo_data, logo_mime_type FROM ATS_TENANTS WHERE id = ?", (tenant_id,)
+    )
+    if not row or not row.get('logo_data'):
+        raise HTTPException(status_code=404, detail="Logo no encontrado")
+    logo_bytes = base64.b64decode(row['logo_data'])
+    mime = row.get('logo_mime_type') or 'image/png'
+    return Response(content=logo_bytes, media_type=mime, headers={"Cache-Control": "public, max-age=86400"})
 
 # ============ APPLICATIONS ROUTES ============
 @api_router.post("/applications")
@@ -3356,6 +3360,8 @@ async def startup():
     for col, definition in [
         ('logo_url', 'NVARCHAR(500)'),
         ('logo_stored_path', 'NVARCHAR(500)'),
+        ('logo_data', 'NVARCHAR(MAX)'),
+        ('logo_mime_type', 'NVARCHAR(50)'),
         ('primary_color', "NVARCHAR(20) DEFAULT '#004aad'"),
         ('secondary_color', "NVARCHAR(20) DEFAULT '#38b6ff'"),
         ('short_name', 'NVARCHAR(100)'),
