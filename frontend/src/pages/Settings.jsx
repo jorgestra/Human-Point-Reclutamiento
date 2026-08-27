@@ -27,7 +27,9 @@ import {
   Calendar,
   ShieldCheck,
   UserPlus,
-  Lock
+  Lock,
+  Edit,
+  Trash2
 } from 'lucide-react';
 
 // Generic Catalog Manager Component
@@ -334,6 +336,7 @@ const UsersManager = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
   const [formData, setFormData] = useState({
     first_name: '', last_name: '', email: '', password: '',
     role: 'recruiter', department: ''
@@ -360,22 +363,62 @@ const UsersManager = () => {
 
   useEffect(() => { loadUsers(); }, []);
 
-  const handleCreate = async () => {
-    if (!formData.first_name || !formData.email || !formData.password) {
-      toast.error('Nombre, correo y contraseña son requeridos');
+  const openCreate = () => {
+    setEditingUser(null);
+    setFormData({ first_name: '', last_name: '', email: '', password: '', role: 'recruiter', department: '' });
+    setShowForm(true);
+  };
+
+  const openEdit = (u) => {
+    setEditingUser(u);
+    setFormData({ first_name: u.first_name || '', last_name: u.last_name || '', email: u.email || '', password: '', role: u.role || 'recruiter', department: u.department || '' });
+    setShowForm(true);
+  };
+
+  const handleSave = async () => {
+    if (!formData.first_name || !formData.email) {
+      toast.error('Nombre y correo son requeridos');
       return;
     }
     try {
-      await apiRequest('/auth/register', {
-        method: 'POST',
-        body: JSON.stringify({ ...formData, tenant_id: 'default' })
-      });
-      toast.success('Usuario creado exitosamente');
+      if (editingUser) {
+        // Editar usuario existente
+        await apiRequest(`/users/${editingUser.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            first_name: formData.first_name,
+            last_name: formData.last_name,
+            department: formData.department,
+            role: formData.role,
+            ...(formData.password ? { password: formData.password } : {})
+          })
+        });
+        toast.success('Usuario actualizado');
+      } else {
+        if (!formData.password) { toast.error('La contraseña es requerida'); return; }
+        await apiRequest('/auth/register', {
+          method: 'POST',
+          body: JSON.stringify({ ...formData, tenant_id: 'default' })
+        });
+        toast.success('Usuario creado exitosamente');
+      }
       setShowForm(false);
+      setEditingUser(null);
       setFormData({ first_name: '', last_name: '', email: '', password: '', role: 'recruiter', department: '' });
       loadUsers();
     } catch (error) {
-      toast.error(error.message || 'Error al crear usuario');
+      toast.error(error.message || 'Error al guardar usuario');
+    }
+  };
+
+  const handleDelete = async (u) => {
+    if (!window.confirm(`¿Eliminar permanentemente a ${u.first_name} ${u.last_name}? Esta acción no se puede deshacer.`)) return;
+    try {
+      await apiRequest(`/users/${u.id}`, { method: 'DELETE' });
+      toast.success('Usuario eliminado');
+      loadUsers();
+    } catch (error) {
+      toast.error(error.message || 'Error al eliminar usuario');
     }
   };
 
@@ -407,7 +450,7 @@ const UsersManager = () => {
           <h3 className="font-semibold text-slate-900">Gestión de Usuarios</h3>
           <p className="text-sm text-slate-500">Administra los usuarios que tienen acceso al sistema</p>
         </div>
-        <Button onClick={() => setShowForm(true)} className="bg-slate-900 hover:bg-slate-800" size="sm">
+        <Button onClick={openCreate} className="bg-slate-900 hover:bg-slate-800" size="sm">
           <UserPlus size={14} className="mr-2" /> Nuevo Usuario
         </Button>
       </div>
@@ -421,7 +464,7 @@ const UsersManager = () => {
                 <TableHead>Rol</TableHead>
                 <TableHead>Departamento</TableHead>
                 <TableHead>Estado</TableHead>
-                <TableHead className="w-[80px]"></TableHead>
+                <TableHead className="w-[120px]">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -450,10 +493,18 @@ const UsersManager = () => {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm" onClick={() => handleToggleActive(u)}
-                      className={u.is_active ? 'text-red-500 hover:text-red-700' : 'text-green-600 hover:text-green-700'}>
-                      {u.is_active ? <Lock size={14} /> : <Check size={14} />}
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => openEdit(u)} className="text-slate-500 hover:text-slate-700 h-7 w-7 p-0">
+                        <Edit size={13} />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleToggleActive(u)}
+                        className={u.is_active ? 'text-amber-500 hover:text-amber-700 h-7 w-7 p-0' : 'text-green-600 hover:text-green-700 h-7 w-7 p-0'}>
+                        {u.is_active ? <Lock size={13} /> : <Check size={13} />}
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleDelete(u)} className="text-red-500 hover:text-red-700 h-7 w-7 p-0">
+                        <Trash2 size={13} />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -463,7 +514,7 @@ const UsersManager = () => {
       </Card>
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Nuevo Usuario</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingUser ? 'Editar Usuario' : 'Nuevo Usuario'}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
@@ -477,11 +528,12 @@ const UsersManager = () => {
             </div>
             <div className="space-y-1">
               <Label>Correo *</Label>
-              <Input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="correo@empresa.com" />
+              <Input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="correo@empresa.com" disabled={!!editingUser} />
+              {editingUser && <p className="text-xs text-slate-400">El correo no se puede cambiar</p>}
             </div>
             <div className="space-y-1">
-              <Label>Contraseña *</Label>
-              <Input type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} placeholder="Mínimo 6 caracteres" />
+              <Label>{editingUser ? 'Nueva Contraseña (opcional)' : 'Contraseña *'}</Label>
+              <Input type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} placeholder={editingUser ? 'Dejar vacío para no cambiar' : 'Mínimo 6 caracteres'} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
@@ -499,8 +551,8 @@ const UsersManager = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button>
-            <Button onClick={handleCreate} className="bg-slate-900 hover:bg-slate-800">
-              <UserPlus size={14} className="mr-2" /> Crear Usuario
+            <Button onClick={handleSave} className="bg-slate-900 hover:bg-slate-800">
+              {editingUser ? <><Edit size={14} className="mr-2" /> Guardar Cambios</> : <><UserPlus size={14} className="mr-2" /> Crear Usuario</>}
             </Button>
           </DialogFooter>
         </DialogContent>

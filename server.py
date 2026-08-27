@@ -569,6 +569,42 @@ async def login(credentials: UserLogin):
     return {"access_token": token, "token_type": "bearer", "user": serialize_doc(user_data)}
 
 
+@api_router.put("/users/{user_id}")
+async def update_user(user_id: str, data: dict, admin: dict = Depends(check_role([UserRole.ADMIN]))):
+    import bcrypt as _bcrypt
+    updates = []
+    vals = []
+    if data.get('first_name'):
+        updates.append("first_name=?"); vals.append(data['first_name'])
+    if 'last_name' in data:
+        updates.append("last_name=?"); vals.append(data.get('last_name', ''))
+    if data.get('department') is not None:
+        updates.append("department=?"); vals.append(data.get('department', ''))
+    if data.get('role'):
+        updates.append("role=?"); vals.append(data['role'])
+    if data.get('password'):
+        pw_hash = _bcrypt.hashpw(data['password'].encode(), _bcrypt.gensalt()).decode()
+        updates.append("password_hash=?"); vals.append(pw_hash)
+    if not updates:
+        raise HTTPException(status_code=400, detail="Nada que actualizar")
+    vals.append(user_id)
+    vals.append(admin['tenant_id'])
+    await database.execute(
+        f"UPDATE ATS_USERS SET {', '.join(updates)} WHERE id = ? AND tenant_id = ?",
+        tuple(vals)
+    )
+    return {"message": "Usuario actualizado"}
+
+@api_router.delete("/users/{user_id}")
+async def delete_user(user_id: str, admin: dict = Depends(check_role([UserRole.ADMIN]))):
+    if user_id == admin['id']:
+        raise HTTPException(status_code=400, detail="No puedes eliminarte a ti mismo")
+    await database.execute(
+        "DELETE FROM ATS_USERS WHERE id = ? AND tenant_id = ?",
+        (user_id, admin['tenant_id'])
+    )
+    return {"message": "Usuario eliminado"}
+
 @api_router.put("/users/{user_id}/deactivate")
 async def deactivate_user(user_id: str, admin: dict = Depends(check_role([UserRole.ADMIN]))):
     if user_id == admin['id']:
