@@ -57,7 +57,7 @@ export const Login = () => {
           {/* Logo Human Point */}
           <div data-testid="login-logo">
             <img
-              src="/human-point-logo.png"
+              src="/human-point-logo.svg"
               alt="Human Point"
               style={{ width: '70%', maxWidth: 360, height: 'auto' }}
             />
@@ -87,7 +87,7 @@ export const Login = () => {
 
           {/* Logo mobile */}
           <div className="lg:hidden mb-8 flex flex-col items-center">
-            <img src="/human-point-logo.png" alt="Human Point" style={{ width: 180, height: 'auto', marginBottom: 8 }} />
+            <img src="/human-point-logo.svg" alt="Human Point" style={{ width: 180, height: 'auto', marginBottom: 8 }} />
           </div>
 
           <Card className="border-0 shadow-xl">
