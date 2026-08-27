@@ -17,9 +17,7 @@ export const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loginData, setLoginData] = useState({ email: '', password: '' });
 
-  if (user) {
-    return <Navigate to="/dashboard" replace />;
-  }
+  if (user) return <Navigate to="/dashboard" replace />;
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -35,47 +33,48 @@ export const Login = () => {
     }
   };
 
+  // Cargar logo del cliente desde tenant_config
+  let clientLogoUrl = null;
+  try {
+    const tc = JSON.parse(localStorage.getItem('tenant_config') || '{}');
+    if (tc.logo_url) {
+      const backendUrl = process.env.REACT_APP_BACKEND_URL || 'https://human-point-reclutamiento-production.up.railway.app';
+      clientLogoUrl = `${backendUrl}${tc.logo_url}`;
+    }
+  } catch {}
+
   return (
     <div className="min-h-screen flex" data-testid="login-page">
 
       {/* Panel izquierdo */}
       <div
         className="hidden lg:flex lg:w-1/2 relative bg-slate-900"
-        style={{
-          backgroundImage: `url(${BG_IMAGE})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center'
-        }}
+        style={{ backgroundImage: `url(${BG_IMAGE})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
       >
-        <div
-          className="absolute inset-0"
-          style={{ background: 'linear-gradient(160deg, rgba(3,9,64,0.80) 0%, rgba(0,74,173,0.60) 60%, rgba(56,182,255,0.30) 100%)' }}
-        />
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(160deg, rgba(3,9,64,0.88) 0%, rgba(0,74,173,0.70) 60%, rgba(56,182,255,0.35) 100%)' }} />
 
         <div className="relative z-10 p-12 flex flex-col justify-between w-full">
 
-          {/* Logo grande */}
-          <div className="flex flex-col gap-3" data-testid="login-logo">
+          {/* Logo Human Point grande arriba */}
+          <div data-testid="login-logo">
             <img
               src="/human-point-logo.png"
               alt="Human Point"
-              style={{ width: 200, height: 'auto', filter: 'drop-shadow(0 4px 16px rgba(0,0,0,0.3))' }}
+              style={{ width: 280, height: 'auto', filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.5))' }}
             />
           </div>
 
           {/* Tagline */}
-          <div className="space-y-4">
-            <div>
-              <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight">
-                Sistema de reclutamiento
-              </h1>
-              <h1 className="text-4xl lg:text-5xl font-bold leading-tight" style={{ color: '#38b6ff' }}>
-                y selección
-              </h1>
-            </div>
-            <p className="text-lg text-slate-300 max-w-lg">
-              Gestiona todo el ciclo de reclutamiento, desde requisiciones hasta contrataciones.
-            </p>
+          <div className="space-y-2">
+            <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight">
+              Human Point —
+            </h1>
+            <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight">
+              Sistema de reclutamiento
+            </h1>
+            <h1 className="text-4xl lg:text-5xl font-bold leading-tight" style={{ color: '#38b6ff' }}>
+              y selección
+            </h1>
           </div>
 
           <p className="text-slate-400 text-sm">
@@ -89,16 +88,18 @@ export const Login = () => {
         <div className="w-full max-w-md">
 
           {/* Logo mobile */}
-          <div className="lg:hidden mb-8 flex flex-col items-center gap-2">
-            <img
-              src="/human-point-logo.png"
-              alt="Human Point"
-              style={{ width: 160, height: 'auto' }}
-            />
+          <div className="lg:hidden mb-8 flex flex-col items-center">
+            <img src="/human-point-logo.png" alt="Human Point" style={{ width: 180, height: 'auto', marginBottom: 8 }} />
           </div>
 
           <Card className="border-0 shadow-xl">
-            <CardHeader className="space-y-1 pb-4">
+            <CardHeader className="space-y-3 pb-4">
+              {/* Logo del cliente arriba de Bienvenido */}
+              {clientLogoUrl && (
+                <div className="flex justify-center pt-2">
+                  <img src={clientLogoUrl} alt="Cliente" style={{ height: 48, maxWidth: 160, objectFit: 'contain' }} />
+                </div>
+              )}
               <CardTitle className="text-2xl font-bold text-center">
                 Bienvenido
               </CardTitle>
