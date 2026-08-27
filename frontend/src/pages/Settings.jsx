@@ -27,9 +27,7 @@ import {
   Calendar,
   ShieldCheck,
   UserPlus,
-  Lock,
-  Edit,
-  Trash2
+  Lock
 } from 'lucide-react';
 
 // Generic Catalog Manager Component
