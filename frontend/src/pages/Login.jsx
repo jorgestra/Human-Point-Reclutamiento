@@ -53,7 +53,7 @@ export const Login = () => {
         <div className="absolute inset-0" style={{ background: 'linear-gradient(160deg, rgba(3,9,64,0.88) 0%, rgba(0,74,173,0.70) 60%, rgba(56,182,255,0.35) 100%)' }} />
 
         {/* Logo — primero en el DOM, pegado arriba */}
-        <div className="relative z-10 p-8 pb-0" data-testid="login-logo">
+        <div className="relative z-10 p-6 pb-0" data-testid="login-logo">
           <img
             src="/human-point-logo.svg"
             alt="Human Point"
@@ -62,7 +62,7 @@ export const Login = () => {
         </div>
 
         {/* Tagline — crece para llenar el espacio y queda abajo */}
-        <div className="relative z-10 p-8 pt-0 flex flex-col justify-end flex-1">
+        <div className="relative z-10 p-6 pt-0 flex flex-col justify-end" style={{paddingBottom: "10%"}}>
           <div className="space-y-1">
             <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight">
               Human Point —
