@@ -3373,6 +3373,26 @@ async def startup():
         IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ATS_CANDIDATOS') AND name = 'dpi')
         ALTER TABLE ATS_CANDIDATOS ADD dpi NVARCHAR(20)
     """)
+    await database.execute("""
+        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ATS_CANDIDATOS') AND name = 'skills')
+        ALTER TABLE ATS_CANDIDATOS ADD skills NVARCHAR(MAX)
+    """)
+    await database.execute("""
+        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ATS_CANDIDATOS') AND name = 'location')
+        ALTER TABLE ATS_CANDIDATOS ADD location NVARCHAR(200)
+    """)
+    await database.execute("""
+        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ATS_CANDIDATOS') AND name = 'linkedin_url')
+        ALTER TABLE ATS_CANDIDATOS ADD linkedin_url NVARCHAR(500)
+    """)
+    await database.execute("""
+        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ATS_CANDIDATOS') AND name = 'expected_salary')
+        ALTER TABLE ATS_CANDIDATOS ADD expected_salary FLOAT
+    """)
+    await database.execute("""
+        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ATS_CANDIDATOS') AND name = 'salary_currency')
+        ALTER TABLE ATS_CANDIDATOS ADD salary_currency NVARCHAR(10) DEFAULT 'GTQ'
+    """)
     # Agregar columna departure_reason a experiencia si no existe
     await database.execute("""
         IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ATS_CANDIDATOS_EXPERIENCIA') AND name = 'departure_reason')
