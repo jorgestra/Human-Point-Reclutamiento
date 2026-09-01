@@ -211,7 +211,7 @@ export const JobDetail = () => {
         );
       } else {
         // Standard JSON endpoint
-        response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/applications/public?tenant_id=default`, {
+        response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/public/apply/${id}?tenant_id=default`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ vacancy_id: id, candidate_data: candidateData })
