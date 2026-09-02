@@ -190,7 +190,7 @@ export const Candidates = () => {
       if (formData.professional_area_ids?.length > 0 && res.id) {
         await apiRequest(`/candidates/${res.id}/areas/sync`, {
           method: 'PUT',
-          body: JSON.stringify(formData.professional_area_ids)
+          body: JSON.stringify({ ids: formData.professional_area_ids })
         });
       }
 
@@ -198,7 +198,7 @@ export const Candidates = () => {
       if (formData.language_ids?.length > 0 && res.id) {
         await apiRequest(`/candidates/${res.id}/languages/sync`, {
           method: 'PUT',
-          body: JSON.stringify(formData.language_ids)
+          body: JSON.stringify({ ids: formData.language_ids })
         });
       }
 
@@ -1185,21 +1185,6 @@ export const CandidateDetail = () => {
   };
 
   const handleGeneratePDF = () => {
-    // Cargar config del tenant para logo y nombre
-    let tenantName = 'Human Point';
-    let tenantShort = 'HP';
-    let tenantLogo = null;
-    let primaryColor = '#004aad';
-    let secondaryColor = '#38b6ff';
-    try {
-      const tc = JSON.parse(localStorage.getItem('tenant_config') || '{}');
-      if (tc.name) tenantName = tc.name;
-      if (tc.short_name) tenantShort = tc.short_name;
-      if (tc.logo_url) tenantLogo = `${process.env.REACT_APP_BACKEND_URL}${tc.logo_url}`;
-      if (tc.primary_color) primaryColor = tc.primary_color;
-      if (tc.secondary_color) secondaryColor = tc.secondary_color;
-    } catch {}
-
     const EXPERIENCE_LABELS = { '0-2': '0-2 años', '3-5': '3-5 años', '5-10': '5-10 años', '+10': '+10 años' };
     const STATUS_LABELS = { available: 'Disponible', talent_pool: 'Talent Pool', disqualified: 'Descalificado', no_response: 'No responde', rejected_offer: 'Rechazó oferta' };
     const exp = (candidate.experience || []).map(e => `
@@ -1228,22 +1213,22 @@ export const CandidateDetail = () => {
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;background:#fff;font-size:13px}
 .page{max-width:800px;margin:0 auto;padding:32px 40px}
-.header{display:flex;align-items:center;justify-content:space-between;padding-bottom:20px;border-bottom:3px solid ${primaryColor};margin-bottom:24px}
+.header{display:flex;align-items:center;justify-content:space-between;padding-bottom:20px;border-bottom:3px solid #004aad;margin-bottom:24px}
 .logo-block{display:flex;align-items:center;gap:10px}
-.logo-icon{width:42px;height:42px;border-radius:9px;background:linear-gradient(135deg,${primaryColor},${secondaryColor});display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:15px}
+.logo-icon{width:42px;height:42px;border-radius:9px;background:linear-gradient(135deg,#004aad,#38b6ff);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:15px}
 .brand{font-weight:700;font-size:15px;color:#030940}
 .sub{font-size:11px;color:#64748b}
 .cand-name{font-size:22px;font-weight:700;color:#030940;text-align:right}
-.cand-level{font-size:12px;color:${primaryColor};text-align:right;margin-top:2px}
+.cand-level{font-size:12px;color:#004aad;text-align:right;margin-top:2px}
 .status-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#e0f2fe;color:#0369a1;margin-top:4px}
 .layout{display:grid;grid-template-columns:195px 1fr;gap:24px}
 .avatar{width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg,#004aad,#38b6ff);display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;font-weight:700;margin-bottom:16px}
 .info-label{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;font-weight:600}
 .info-value{font-size:12px;color:#1e293b;margin-top:2px;word-break:break-word}
-.salary{font-size:14px;font-weight:700;color:${primaryColor}}
+.salary{font-size:14px;font-weight:700;color:#004aad}
 .info-item{margin-bottom:10px}
 .section{margin-bottom:20px}
-.section-title{font-size:11px;text-transform:uppercase;letter-spacing:.8px;font-weight:700;color:${primaryColor};border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:10px}
+.section-title{font-size:11px;text-transform:uppercase;letter-spacing:.8px;font-weight:700;color:#004aad;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:10px}
 .tags{display:flex;flex-wrap:wrap;gap:5px}
 .tag{background:#f1f5f9;color:#475569;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500}
 .tag-cyan{background:#e0f7fa;color:#006064}
@@ -1253,7 +1238,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;background:#fff;font-
 .exp-header{display:flex;justify-content:space-between;align-items:baseline}
 .exp-position{font-weight:600;font-size:13px}
 .exp-dates{font-size:11px;color:#94a3b8}
-.exp-company{font-size:12px;color:${primaryColor};margin-top:2px}
+.exp-company{font-size:12px;color:#004aad;margin-top:2px}
 .exp-desc{font-size:11px;color:#64748b;margin-top:4px;line-height:1.5}
 .footer{margin-top:32px;padding-top:12px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;font-size:10px;color:#94a3b8}
 @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.page{padding:20px 28px}}
@@ -1261,11 +1246,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;background:#fff;font-
 <div class="page">
   <div class="header">
     <div class="logo-block">
-      ${tenantLogo
-        ? `<img src="${tenantLogo}" alt="${tenantName}" style="height:42px;object-fit:contain;border-radius:8px;" />`
-        : `<div class="logo-icon">${tenantShort.slice(0,2).toUpperCase()}</div>`
-      }
-      <div><p class="brand">${tenantName}</p><p class="sub">Reclutamiento</p></div>
+      <div class="logo-icon">HP</div>
+      <div><p class="brand">Human Point</p><p class="sub">Reclutamiento</p></div>
     </div>
     <div>
       <div class="cand-name">${candidate.first_name} ${candidate.last_name}</div>
@@ -1293,28 +1275,17 @@ body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;background:#fff;font-
     </div>
   </div>
   <div class="footer">
-    <span>${tenantName} · Reclutamiento</span>
+    <span>Human Point Reclutamiento · ITligencia</span>
     <span>Generado el ${new Date().toLocaleDateString('es-GT',{year:'numeric',month:'long',day:'numeric'})}</span>
   </div>
 </div>
 </body></html>`;
 
-    const toolbar = `
-      <div style="position:fixed;top:0;left:0;right:0;background:#1e293b;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;z-index:999;box-shadow:0 2px 8px rgba(0,0,0,0.3)">
-        <span style="color:#fff;font-size:13px;font-weight:600;">${candidate.first_name} ${candidate.last_name} — Perfil</span>
-        <div style="display:flex;gap:10px">
-          <button onclick="window.print()" style="background:${primaryColor};color:#fff;border:none;padding:7px 18px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">🖨️ Imprimir / Guardar PDF</button>
-          <button onclick="window.close()" style="background:#475569;color:#fff;border:none;padding:7px 18px;border-radius:6px;font-size:13px;cursor:pointer;">✕ Cerrar</button>
-        </div>
-      </div>
-      <div style="height:52px"></div>
-    `;
-    const fullHtml = html.replace('<div class="page">', toolbar + '<div class="page">');
     const win = window.open('', '_blank');
-    win.document.write(fullHtml);
+    win.document.write(html);
     win.document.close();
     win.focus();
-    // NO llamar win.print() automáticamente
+    setTimeout(() => { win.print(); }, 600);
   };
 
   return (
