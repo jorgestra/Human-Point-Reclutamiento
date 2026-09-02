@@ -155,7 +155,7 @@ export const JobBoard = () => {
       <footer className="bg-slate-900 text-slate-400 py-8">
         <div className="max-w-5xl mx-auto px-4 text-center">
           <div className="flex flex-col items-center mb-3">
-            <img src="/human-point-logo.png" alt="Human Point" style={{height: 40, marginBottom: 4}} />
+            <img src="/human-point-logo.png" alt="Human Point" style={{height: 70, marginBottom: 4, filter: 'brightness(0) invert(1)'}} />
           </div>
           <p className="text-sm">© 2026 Human Point · ITligencia. Todos los derechos reservados.</p>
         </div>
