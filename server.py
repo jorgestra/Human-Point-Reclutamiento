@@ -3420,6 +3420,10 @@ async def startup():
             created_at DATETIME DEFAULT GETUTCDATE()
         )
     """)
+    await database.execute("""
+        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ATS_CANDIDATOS_EDUCACION') AND name = 'is_current')
+        ALTER TABLE ATS_CANDIDATOS_EDUCACION ADD is_current BIT DEFAULT 0
+    """)
     # Agregar columna DPI a candidatos si no existe
     await database.execute("""
         IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ATS_CANDIDATOS') AND name = 'dpi')
