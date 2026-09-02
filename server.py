@@ -3331,7 +3331,9 @@ async def public_apply_with_cv(
                 logger.error(f"Error guardando experiencia en apply-with-cv: {e}")
 
         # Guardar educación
+        logger.info(f"APPLY-WITH-CV education recibida: {cd.education}")
         for edu in (cd.education or []):
+            logger.info(f"APPLY-WITH-CV guardando edu: institution={edu.institution} degree={edu.degree}")
             try:
                 await database.execute(
                     """INSERT INTO ATS_CANDIDATOS_EDUCACION
@@ -3341,6 +3343,7 @@ async def public_apply_with_cv(
                      edu.institution, edu.degree, edu.field_of_study,
                      edu.start_date, edu.end_date, 1 if edu.is_current else 0)
                 )
+                logger.info(f"APPLY-WITH-CV edu guardada OK")
             except Exception as e:
                 logger.error(f"Error guardando educación en apply-with-cv: {e}")
 
