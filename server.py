@@ -227,9 +227,10 @@ class Education(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     institution: str
     degree: str
-    field_of_study: str
+    field_of_study: Optional[str] = None
     start_date: Optional[str] = None
     end_date: Optional[str] = None
+    is_current: bool = False
 
 class Experience(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
