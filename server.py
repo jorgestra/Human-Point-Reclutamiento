@@ -227,10 +227,9 @@ class Education(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     institution: str
     degree: str
-    field_of_study: Optional[str] = None
+    field_of_study: str
     start_date: Optional[str] = None
     end_date: Optional[str] = None
-    is_current: bool = False
 
 class Experience(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -1558,7 +1557,7 @@ async def get_tenant_public_config(tenant_id: str = "default"):
     d = serialize_doc(row)
     if not d.get('name') and d.get('company_name'):
         d['name'] = d['company_name']
-    return {"name": d.get('name'), "logo_url": d.get('logo_url'), "primary_color": d.get('primary_color', '#004aad')}
+    return {"name": d.get('name'), "logo_url": d.get('logo_url'), "primary_color": d.get('primary_color', '#004aad'), "website": d.get('website'), "short_name": d.get('short_name')}
 
 @api_router.put("/tenant/config")
 async def update_tenant_config(data: dict, user: dict = Depends(check_role([UserRole.ADMIN]))):
@@ -3207,8 +3206,6 @@ async def public_apply(vacancy_id: str, data: ApplicationCreate, tenant_id: str 
         cd = data.candidate_data
         import json as _json
         skills_json = _json.dumps(cd.skills or [])
-        logger.info(f"PUBLIC_APPLY - education recibida: {cd.education}")
-        logger.info(f"PUBLIC_APPLY - experience recibida: {cd.experience}")
         await database.execute(
             """INSERT INTO ATS_CANDIDATOS (id, tenant_id, first_name, last_name, email, phone,
                location, linkedin_url, expected_salary, salary_currency, skills, source, notes, created_by)
@@ -3231,9 +3228,7 @@ async def public_apply(vacancy_id: str, data: ApplicationCreate, tenant_id: str 
             )
 
         # Guardar educación
-        logger.info(f"PUBLIC_APPLY - guardando {len(cd.education or [])} registros de educación")
         for edu in (cd.education or []):
-            logger.info(f"PUBLIC_APPLY - educación: {edu}")
             await database.execute(
                 """INSERT INTO ATS_CANDIDATOS_EDUCACION
                    (id, candidate_id, institution, degree, field_of_study, start_date, end_date, is_current)
@@ -3290,62 +3285,15 @@ async def public_apply_with_cv(
     existing = await database.fetch_one("SELECT id FROM ATS_CANDIDATOS WHERE email = ? AND tenant_id = ?", (candidate_data_model.email, tenant_id))
     if existing:
         candidate_id = existing['id']
-        cd = candidate_data_model
-        import json as _json
-        skills_json = _json.dumps(cd.skills or [])
-        try:
-            await database.execute(
-                """UPDATE ATS_CANDIDATOS SET phone=COALESCE(?,phone), location=COALESCE(?,location),
-                   linkedin_url=COALESCE(?,linkedin_url), expected_salary=COALESCE(?,expected_salary),
-                   skills=COALESCE(NULLIF(?,N'[]'),skills) WHERE id=?""",
-                (cd.phone, cd.location, cd.linkedin_url, cd.expected_salary, skills_json, candidate_id)
-            )
-        except Exception: pass
     else:
         cid = str(uuid.uuid4())
         cd = candidate_data_model
-        import json as _json
-        skills_json = _json.dumps(cd.skills or [])
         await database.execute(
-            """INSERT INTO ATS_CANDIDATOS (id, tenant_id, first_name, last_name, email, phone,
-               location, linkedin_url, expected_salary, salary_currency, skills, source, notes, created_by)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (cid, tenant_id, cd.first_name, cd.last_name, cd.email, cd.phone,
-             cd.location, cd.linkedin_url, cd.expected_salary, cd.salary_currency or 'GTQ',
-             skills_json, cd.source or 'portal', cd.notes, 'self')
+            """INSERT INTO ATS_CANDIDATOS (id, tenant_id, first_name, last_name, email, phone, source, notes, created_by)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (cid, tenant_id, cd.first_name, cd.last_name, cd.email, cd.phone, cd.source or 'portal', cd.notes, 'self')
         )
         candidate_id = cid
-
-        # Guardar experiencia
-        for exp in (cd.experience or []):
-            try:
-                await database.execute(
-                    """INSERT INTO ATS_CANDIDATOS_EXPERIENCIA
-                       (id, candidate_id, company, position, start_date, end_date, is_current, description, departure_reason)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                    (str(uuid.uuid4()), candidate_id,
-                     exp.company, exp.position, exp.start_date, exp.end_date,
-                     1 if exp.is_current else 0, exp.description, getattr(exp, 'departure_reason', None))
-                )
-            except Exception as e:
-                logger.error(f"Error guardando experiencia en apply-with-cv: {e}")
-
-        # Guardar educación
-        logger.info(f"APPLY-WITH-CV education recibida: {cd.education}")
-        for edu in (cd.education or []):
-            logger.info(f"APPLY-WITH-CV guardando edu: institution={edu.institution} degree={edu.degree}")
-            try:
-                await database.execute(
-                    """INSERT INTO ATS_CANDIDATOS_EDUCACION
-                       (id, candidate_id, institution, degree, field_of_study, start_date, end_date, is_current)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                    (str(uuid.uuid4()), candidate_id,
-                     edu.institution, edu.degree, edu.field_of_study,
-                     edu.start_date, edu.end_date, 1 if edu.is_current else 0)
-                )
-                logger.info(f"APPLY-WITH-CV edu guardada OK")
-            except Exception as e:
-                logger.error(f"Error guardando educación en apply-with-cv: {e}")
 
     if cv_content:
         upload_dir = ROOT_DIR / "uploads" / "candidates"
@@ -3419,10 +3367,6 @@ async def startup():
             created_by NVARCHAR(36),
             created_at DATETIME DEFAULT GETUTCDATE()
         )
-    """)
-    await database.execute("""
-        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ATS_CANDIDATOS_EDUCACION') AND name = 'is_current')
-        ALTER TABLE ATS_CANDIDATOS_EDUCACION ADD is_current BIT DEFAULT 0
     """)
     # Agregar columna DPI a candidatos si no existe
     await database.execute("""
