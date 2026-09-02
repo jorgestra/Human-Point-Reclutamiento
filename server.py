@@ -3207,6 +3207,8 @@ async def public_apply(vacancy_id: str, data: ApplicationCreate, tenant_id: str 
         cd = data.candidate_data
         import json as _json
         skills_json = _json.dumps(cd.skills or [])
+        logger.info(f"PUBLIC_APPLY - education recibida: {cd.education}")
+        logger.info(f"PUBLIC_APPLY - experience recibida: {cd.experience}")
         await database.execute(
             """INSERT INTO ATS_CANDIDATOS (id, tenant_id, first_name, last_name, email, phone,
                location, linkedin_url, expected_salary, salary_currency, skills, source, notes, created_by)
@@ -3229,7 +3231,9 @@ async def public_apply(vacancy_id: str, data: ApplicationCreate, tenant_id: str 
             )
 
         # Guardar educación
+        logger.info(f"PUBLIC_APPLY - guardando {len(cd.education or [])} registros de educación")
         for edu in (cd.education or []):
+            logger.info(f"PUBLIC_APPLY - educación: {edu}")
             await database.execute(
                 """INSERT INTO ATS_CANDIDATOS_EDUCACION
                    (id, candidate_id, institution, degree, field_of_study, start_date, end_date, is_current)
