@@ -28,10 +28,16 @@ const LOGO_URL = null; // Logo gestionado inline
 export const JobBoard = () => {
   const [vacancies, setVacancies] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [tenantConfig, setTenantConfig] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     loadVacancies();
+    const backendUrl = process.env.REACT_APP_BACKEND_URL || '';
+    fetch(`${backendUrl}/api/tenant/public-config?tenant_id=default`)
+      .then(r => r.json())
+      .then(d => setTenantConfig(d))
+      .catch(() => {});
   }, []);
 
   const loadVacancies = async () => {
@@ -50,11 +56,35 @@ export const JobBoard = () => {
     <div className="min-h-screen bg-slate-50" data-testid="job-board-page">
       {/* Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2"><div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{background:"linear-gradient(135deg,#004aad,#38b6ff)"}}><span className="text-white font-bold text-sm">HP</span></div><span className="text-white font-bold text-lg">Human Point</span></div>
-          <Button variant="outline" onClick={() => navigate('/login')}>
-            Portal de Reclutadores
-          </Button>
+        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {tenantConfig?.logo_url ? (
+              <img
+                src={`${process.env.REACT_APP_BACKEND_URL || ''}${tenantConfig.logo_url}`}
+                alt={tenantConfig.name || 'Logo'}
+                style={{ height: 40, maxWidth: 160, objectFit: 'contain' }}
+              />
+            ) : (
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{background:'linear-gradient(135deg,#004aad,#38b6ff)'}}>
+                  <span className="text-white font-bold text-sm">
+                    {(tenantConfig?.short_name || tenantConfig?.name || 'HP').slice(0,2).toUpperCase()}
+                  </span>
+                </div>
+                <span className="font-bold text-lg text-slate-900">{tenantConfig?.name || 'Human Point'}</span>
+              </div>
+            )}
+          </div>
+          {tenantConfig?.website && (
+            <a
+              href={tenantConfig.website}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-blue-600 hover:underline"
+            >
+              {tenantConfig.website.replace(/^https?:\/\//, '')}
+            </a>
+          )}
         </div>
       </header>
 
@@ -141,6 +171,7 @@ export const JobDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [vacancy, setVacancy] = useState(null);
+  const [tenantConfig, setTenantConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -183,6 +214,11 @@ export const JobDetail = () => {
 
   useEffect(() => {
     loadVacancy();
+    const backendUrl = process.env.REACT_APP_BACKEND_URL || '';
+    fetch(`${backendUrl}/api/tenant/public-config?tenant_id=default`)
+      .then(r => r.json())
+      .then(d => setTenantConfig(d))
+      .catch(() => {});
   }, [loadVacancy]);
 
   const handleSubmit = async (e) => {
@@ -267,12 +303,36 @@ export const JobDetail = () => {
     <div className="min-h-screen bg-slate-50" data-testid="job-detail-page">
       {/* Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2"><div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{background:"linear-gradient(135deg,#004aad,#38b6ff)"}}><span className="text-white font-bold text-sm">HP</span></div><span className="text-white font-bold text-lg">Human Point</span></div>
-          <Button variant="ghost" onClick={() => navigate('/jobs')}>
-            <ArrowLeft className="mr-2" size={16} />
-            Volver a Vacantes
-          </Button>
+        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {tenantConfig?.logo_url ? (
+              <img
+                src={`${process.env.REACT_APP_BACKEND_URL || ''}${tenantConfig.logo_url}`}
+                alt={tenantConfig.name || 'Logo'}
+                style={{ height: 40, maxWidth: 160, objectFit: 'contain' }}
+              />
+            ) : (
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{background:'linear-gradient(135deg,#004aad,#38b6ff)'}}>
+                  <span className="text-white font-bold text-sm">
+                    {(tenantConfig?.short_name || tenantConfig?.name || 'HP').slice(0,2).toUpperCase()}
+                  </span>
+                </div>
+                <span className="font-bold text-lg text-slate-900">{tenantConfig?.name || 'Human Point'}</span>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-4">
+            {tenantConfig?.website && (
+              <a href={tenantConfig.website} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">
+                {tenantConfig.website.replace(/^https?:\/\//, '')}
+              </a>
+            )}
+            <Button variant="ghost" onClick={() => navigate('/jobs')}>
+              <ArrowLeft className="mr-2" size={16} />
+              Volver a Vacantes
+            </Button>
+          </div>
         </div>
       </header>
 
