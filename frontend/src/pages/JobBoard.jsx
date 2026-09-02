@@ -65,26 +65,22 @@ export const JobBoard = () => {
                 style={{ height: 40, maxWidth: 160, objectFit: 'contain' }}
               />
             ) : (
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{background:'linear-gradient(135deg,#004aad,#38b6ff)'}}>
-                  <span className="text-white font-bold text-sm">
-                    {(tenantConfig?.short_name || tenantConfig?.name || 'HP').slice(0,2).toUpperCase()}
-                  </span>
-                </div>
-                <span className="font-bold text-lg text-slate-900">{tenantConfig?.name || 'Human Point'}</span>
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{background:'linear-gradient(135deg,#004aad,#38b6ff)'}}>
+                <span className="text-white font-bold text-sm">
+                  {(tenantConfig?.short_name || tenantConfig?.name || 'HP').slice(0,2).toUpperCase()}
+                </span>
               </div>
             )}
+            <div>
+              <p className="font-bold text-slate-900 leading-tight">{tenantConfig?.name || 'Human Point'}</p>
+              {tenantConfig?.website && (
+                <a href={tenantConfig.website} target="_blank" rel="noopener noreferrer"
+                  className="text-xs text-blue-600 hover:underline">
+                  {tenantConfig.website.replace(/^https?:\/\//, '')}
+                </a>
+              )}
+            </div>
           </div>
-          {tenantConfig?.website && (
-            <a
-              href={tenantConfig.website}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-blue-600 hover:underline"
-            >
-              {tenantConfig.website.replace(/^https?:\/\//, '')}
-            </a>
-          )}
         </div>
       </header>
 
@@ -312,15 +308,21 @@ export const JobDetail = () => {
                 style={{ height: 40, maxWidth: 160, objectFit: 'contain' }}
               />
             ) : (
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{background:'linear-gradient(135deg,#004aad,#38b6ff)'}}>
-                  <span className="text-white font-bold text-sm">
-                    {(tenantConfig?.short_name || tenantConfig?.name || 'HP').slice(0,2).toUpperCase()}
-                  </span>
-                </div>
-                <span className="font-bold text-lg text-slate-900">{tenantConfig?.name || 'Human Point'}</span>
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{background:'linear-gradient(135deg,#004aad,#38b6ff)'}}>
+                <span className="text-white font-bold text-sm">
+                  {(tenantConfig?.short_name || tenantConfig?.name || 'HP').slice(0,2).toUpperCase()}
+                </span>
               </div>
             )}
+            <div>
+              <p className="font-bold text-slate-900 leading-tight">{tenantConfig?.name || 'Human Point'}</p>
+              {tenantConfig?.website && (
+                <a href={tenantConfig.website} target="_blank" rel="noopener noreferrer"
+                  className="text-xs text-blue-600 hover:underline">
+                  {tenantConfig.website.replace(/^https?:\/\//, '')}
+                </a>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-4">
             {tenantConfig?.website && (
